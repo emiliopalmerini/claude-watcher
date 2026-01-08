@@ -13,11 +13,17 @@ import (
 )
 
 func Run(cfg *Config) error {
+	ctx := context.Background()
+
 	db, err := database.NewTurso(cfg.TursoDatabaseURL, cfg.TursoAuthToken)
 	if err != nil {
 		return err
 	}
 	defer db.Close()
+
+	if err := database.Migrate(ctx, db); err != nil {
+		return err
+	}
 
 	httpSrv := server.NewHTTPServer(cfg.Addr, db)
 	go func() {
