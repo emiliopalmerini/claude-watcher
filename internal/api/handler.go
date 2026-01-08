@@ -45,19 +45,11 @@ func (h *Handler) GetChartData(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) fetchTimeSeries(ctx context.Context, hours int) ([]TimePoint, error) {
-	if hours <= 24 {
-		rows, err := h.queries.GetHourlyMetrics(ctx, sqlParam(-hours))
-		if err != nil {
-			return nil, err
-		}
-		return mapSlice(rows, func(r sqlc.GetHourlyMetricsRow) TimePoint {
-			return TimePoint{
-				Period: asString(r.Period), Sessions: r.Sessions, Cost: asFloat(r.Cost),
-				Tokens: Tokens{Input: asInt(r.InputTokens), Output: asInt(r.OutputTokens), Thinking: asInt(r.ThinkingTokens)},
-			}
-		}), nil
+	days := hours / 24
+	if days < 1 {
+		days = 1
 	}
-	rows, err := h.queries.GetDailyMetrics(ctx, sqlParam(-hours/24))
+	rows, err := h.queries.GetDailyMetrics(ctx, sqlParam(-days))
 	if err != nil {
 		return nil, err
 	}
@@ -94,11 +86,11 @@ func sqlParam(v int) sql.NullString {
 }
 
 func rangeToHours(r string) int {
-	m := map[string]int{"1h": 1, "6h": 6, "24h": 24, "7d": 168, "30d": 720, "90d": 2160}
+	m := map[string]int{"7d": 168, "30d": 720, "90d": 2160}
 	if h, ok := m[r]; ok {
 		return h
 	}
-	return 24
+	return 168
 }
 
 func mapSlice[T, U any](s []T, f func(T) U) []U {
@@ -136,7 +128,7 @@ func asString(v interface{}) string {
 	case []byte:
 		return string(x)
 	case time.Time:
-		return x.Format(time.RFC3339)
+		return x.Format("2006-01-02")
 	}
 	return ""
 }

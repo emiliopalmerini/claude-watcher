@@ -28,17 +28,12 @@ templ Dashboard(data DashboardData) {
 				@templates.StatsCard("Cost", fmt.Sprintf("$%.2f", toFloat(data.Week.CostWeek)), "cost")
 			</div>
 		</section>
-		<section x-data="chartDashboard()" x-init="init()">
+		<section id="charts-section">
 			<h2>Historical Trends</h2>
 			<div class="time-range">
-				<template x-for="r in ranges" :key="r.value">
-					<button
-						class="time-range__btn"
-						:class="{ 'time-range__btn--active': range === r.value }"
-						@click="setRange(r.value)"
-						x-text="r.label"
-					></button>
-				</template>
+				<button class="time-range__btn time-range__btn--active" data-range="7d">7D</button>
+				<button class="time-range__btn" data-range="30d">30D</button>
+				<button class="time-range__btn" data-range="90d">90D</button>
 			</div>
 			<div class="charts-grid">
 				<div class="chart-card chart-card--full">
@@ -73,183 +68,136 @@ templ Dashboard(data DashboardData) {
 
 templ chartsScript() {
 	<script>
-		function chartDashboard() {
-			return {
-				range: '24h',
-				ranges: [
-					{ value: '1h', label: '1H' },
-					{ value: '6h', label: '6H' },
-					{ value: '24h', label: '24H' },
-					{ value: '7d', label: '7D' },
-					{ value: '30d', label: '30D' },
-					{ value: '90d', label: '90D' }
-				],
-				charts: {},
-				initialized: false,
+		(function() {
+			const charts = {};
+			const cache = {};
+			const ranges = ['7d', '30d', '90d'];
+			let currentRange = '7d';
 
-				init() {
-					if (this.initialized) return;
-					this.initialized = true;
-					requestAnimationFrame(() => this.fetchAndRender());
-				},
+			const colors = {
+				primary: '#22c55e',
+				secondary: '#3b82f6',
+				input: '#3b82f6',
+				output: '#22c55e',
+				thinking: '#f59e0b',
+				grid: '#1a1a1a',
+				text: '#666666'
+			};
 
-				async setRange(r) {
-					this.range = r;
-					await this.fetchAndRender();
-				},
-
-				async fetchAndRender() {
-					try {
-						const res = await fetch(`/api/charts?range=${this.range}`);
-						if (!res.ok) throw new Error(`HTTP ${res.status}`);
-						const data = await res.json();
-						this.renderCharts(data);
-					} catch (err) {
-						console.error('Failed to fetch chart data:', err);
-					}
-				},
-
-				renderCharts(data) {
-					const colors = {
-						primary: '#22c55e',
-						secondary: '#3b82f6',
-						tertiary: '#a855f7',
-						input: '#3b82f6',
-						output: '#22c55e',
-						thinking: '#f59e0b',
-						cache: '#8b5cf6',
-						grid: '#1a1a1a',
-						text: '#666666'
-					};
-
-					const chartOptions = {
-						responsive: true,
-						maintainAspectRatio: false,
-						plugins: {
-							legend: { labels: { color: colors.text } }
-						},
-						scales: {
-							x: { grid: { color: colors.grid }, ticks: { color: colors.text } },
-							y: { grid: { color: colors.grid }, ticks: { color: colors.text } }
-						}
-					};
-
-					// Time series chart
-					const ts = data.timeSeries || [];
-					this.updateChart('timeSeriesChart', {
-						type: 'line',
-						data: {
-							labels: ts.map(d => this.formatLabel(d.period)),
-							datasets: [
-								{
-									label: 'Sessions',
-									data: ts.map(d => d.sessions),
-									borderColor: colors.primary,
-									backgroundColor: colors.primary + '15',
-									fill: true,
-									tension: 0.3,
-									yAxisID: 'y'
-								},
-								{
-									label: 'Cost ($)',
-									data: ts.map(d => d.cost),
-									borderColor: colors.secondary,
-									backgroundColor: 'transparent',
-									tension: 0.3,
-									yAxisID: 'y1'
-								}
-							]
-						},
-						options: {
-							...chartOptions,
-							scales: {
-								x: { ...chartOptions.scales.x },
-								y: { ...chartOptions.scales.y, position: 'left', beginAtZero: true, suggestedMax: 10 },
-								y1: { ...chartOptions.scales.y, position: 'right', beginAtZero: true, suggestedMax: 1, grid: { drawOnChartArea: false } }
-							}
-						}
-					});
-
-					// Model distribution chart
-					this.updateChart('modelChart', {
-						type: 'doughnut',
-						data: {
-							labels: data.models.map(d => this.formatModel(d.model)),
-							datasets: [{
-								data: data.models.map(d => d.cost),
-								backgroundColor: ['#22c55e', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899'],
-								borderColor: '#0a0a0a',
-								borderWidth: 2
-							}]
-						},
-						options: {
-							responsive: true,
-							maintainAspectRatio: false,
-							plugins: { legend: { position: 'bottom', labels: { color: colors.text } } }
-						}
-					});
-
-					// Hour of day distribution chart
-					const hourLabels = Array.from({length: 24}, (_, i) => `${i}:00`);
-					const hourData = hourLabels.map((_, i) => {
-						const found = (data.hourOfDay || []).find(d => d.hour === i);
-						return found ? found.sessions : 0;
-					});
-					this.updateChart('hourChart', {
-						type: 'bar',
-						data: {
-							labels: hourLabels,
-							datasets: [{
-								label: 'Sessions',
-								data: hourData,
-								backgroundColor: colors.primary + '60',
-								borderColor: colors.primary,
-								borderWidth: 1
-							}]
-						},
-						options: chartOptions
-					});
-
-					// Token usage chart
-					this.updateChart('tokenChart', {
-						type: 'bar',
-						data: {
-							labels: ts.map(d => this.formatLabel(d.period)),
-							datasets: [
-								{ label: 'Input', data: ts.map(d => d.tokens?.input || 0), backgroundColor: colors.input },
-								{ label: 'Output', data: ts.map(d => d.tokens?.output || 0), backgroundColor: colors.output },
-								{ label: 'Thinking', data: ts.map(d => d.tokens?.thinking || 0), backgroundColor: colors.thinking }
-							]
-						},
-						options: { ...chartOptions, scales: { x: { ...chartOptions.scales.x, stacked: true }, y: { ...chartOptions.scales.y, stacked: true, beginAtZero: true } } }
-					});
-				},
-
-				updateChart(id, config) {
-					const el = document.getElementById(id);
-					if (!el) {
-						console.error('Canvas not found:', id);
-						return;
-					}
-					if (this.charts[id]) this.charts[id].destroy();
-					this.charts[id] = new Chart(el, config);
-				},
-
-				formatLabel(period) {
-					if (!period) return '';
-					if (period.includes('T')) {
-						const d = new Date(period);
-						return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-					}
-					return new Date(period).toLocaleDateString([], { month: 'short', day: 'numeric' });
-				},
-
-				formatModel(m) {
-					if (!m) return 'Unknown';
-					return m.replace('claude-', '').replace(/-\d+$/, '');
+			const baseOptions = {
+				responsive: true,
+				maintainAspectRatio: false,
+				animation: false,
+				plugins: { legend: { labels: { color: colors.text } } },
+				scales: {
+					x: { grid: { color: colors.grid }, ticks: { color: colors.text } },
+					y: { grid: { color: colors.grid }, ticks: { color: colors.text } }
 				}
 			};
-		}
+
+			function formatLabel(period) {
+				if (!period) return '';
+				if (period.includes('T')) {
+					return new Date(period).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+				}
+				return new Date(period).toLocaleDateString([], { month: 'short', day: 'numeric' });
+			}
+
+			function formatModel(m) {
+				if (!m) return 'Unknown';
+				return m.replace('claude-', '').replace(/-\d+$/, '');
+			}
+
+			function createChart(id, config) {
+				const el = document.getElementById(id);
+				if (!el) return;
+				if (charts[id]) charts[id].destroy();
+				charts[id] = new Chart(el, config);
+			}
+
+			function renderCharts(data) {
+				if (!data) return;
+
+				const ts = data.timeSeries || [];
+				createChart('timeSeriesChart', {
+					type: 'line',
+					data: {
+						labels: ts.map(d => formatLabel(d.period)),
+						datasets: [
+							{ label: 'Sessions', data: ts.map(d => d.sessions), borderColor: colors.primary, backgroundColor: colors.primary + '15', fill: true, tension: 0.3, yAxisID: 'y' },
+							{ label: 'Cost ($)', data: ts.map(d => d.cost), borderColor: colors.secondary, backgroundColor: 'transparent', tension: 0.3, yAxisID: 'y1' }
+						]
+					},
+					options: { ...baseOptions, scales: { x: baseOptions.scales.x, y: { ...baseOptions.scales.y, position: 'left', beginAtZero: true }, y1: { ...baseOptions.scales.y, position: 'right', beginAtZero: true, grid: { drawOnChartArea: false } } } }
+				});
+
+				const models = data.models || [];
+				if (models.length > 0) {
+					createChart('modelChart', {
+						type: 'doughnut',
+						data: {
+							labels: models.map(d => formatModel(d.model)),
+							datasets: [{ data: models.map(d => d.cost), backgroundColor: ['#22c55e', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899'], borderColor: '#0a0a0a', borderWidth: 2 }]
+						},
+						options: { responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { position: 'bottom', labels: { color: colors.text } } } }
+					});
+				}
+
+				const hourLabels = Array.from({length: 24}, (_, i) => `${i}:00`);
+				const hourData = hourLabels.map((_, i) => {
+					const found = (data.hourOfDay || []).find(d => d.hour === i);
+					return found ? found.sessions : 0;
+				});
+				createChart('hourChart', {
+					type: 'bar',
+					data: { labels: hourLabels, datasets: [{ label: 'Sessions', data: hourData, backgroundColor: colors.primary + '60', borderColor: colors.primary, borderWidth: 1 }] },
+					options: baseOptions
+				});
+
+				createChart('tokenChart', {
+					type: 'bar',
+					data: {
+						labels: ts.map(d => formatLabel(d.period)),
+						datasets: [
+							{ label: 'Input', data: ts.map(d => d.tokens?.input || 0), backgroundColor: colors.input },
+							{ label: 'Output', data: ts.map(d => d.tokens?.output || 0), backgroundColor: colors.output },
+							{ label: 'Thinking', data: ts.map(d => d.tokens?.thinking || 0), backgroundColor: colors.thinking }
+						]
+					},
+					options: { ...baseOptions, scales: { x: { ...baseOptions.scales.x, stacked: true }, y: { ...baseOptions.scales.y, stacked: true, beginAtZero: true } } }
+				});
+			}
+
+			function setActiveButton(range) {
+				document.querySelectorAll('.time-range__btn').forEach(btn => {
+					btn.classList.toggle('time-range__btn--active', btn.dataset.range === range);
+				});
+			}
+
+			async function init() {
+				// Preload all ranges
+				await Promise.all(ranges.map(r =>
+					fetch(`/api/charts?range=${r}`)
+						.then(res => res.json())
+						.then(data => { cache[r] = data; })
+						.catch(err => console.error(`Failed to fetch ${r}:`, err))
+				));
+
+				// Render initial
+				renderCharts(cache[currentRange]);
+
+				// Button click handlers
+				document.querySelectorAll('.time-range__btn').forEach(btn => {
+					btn.addEventListener('click', () => {
+						currentRange = btn.dataset.range;
+						setActiveButton(currentRange);
+						renderCharts(cache[currentRange]);
+					});
+				});
+			}
+
+			init();
+		})();
 	</script>
 }
 

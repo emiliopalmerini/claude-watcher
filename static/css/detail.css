@@ -82,10 +82,6 @@
   height: 100%;
 }
 
-.token-input { background: var(--color-input); }
-.token-output { background: var(--color-output); }
-.token-thinking { background: var(--color-thinking); }
-.token-cache { background: var(--color-cache); }
 
 /* Token Legend - compact inline */
 .token-legend {

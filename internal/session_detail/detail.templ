@@ -111,9 +111,19 @@ func nullStr(s sql.NullString) string {
 
 func nullInt(i sql.NullInt64) string {
 	if i.Valid {
-		return fmt.Sprintf("%d", i.Int64)
+		return formatNumber(i.Int64)
 	}
 	return "0"
+}
+
+func formatNumber(n int64) string {
+	if n < 1000 {
+		return fmt.Sprintf("%d", n)
+	}
+	if n < 1000000 {
+		return fmt.Sprintf("%.1fK", float64(n)/1000)
+	}
+	return fmt.Sprintf("%.1fM", float64(n)/1000000)
 }
 
 func nullCost(f sql.NullFloat64) string {
