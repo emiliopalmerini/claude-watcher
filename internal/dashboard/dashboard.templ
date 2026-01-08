@@ -28,24 +28,227 @@ templ Dashboard(data DashboardData) {
 				@templates.StatsCard("Cost", fmt.Sprintf("$%.2f", toFloat(data.Week.CostWeek)), "cost")
 			</div>
 		</section>
-		<section>
-			<h2>Token Usage</h2>
-			<div class="token-breakdown">
-				<div class="token-legend">
-					<dl>
-						<dt class="token-input">Input</dt>
-						<dd>{ fmt.Sprintf("%v", data.Metrics.TotalInputTokens) }</dd>
-						<dt class="token-output">Output</dt>
-						<dd>{ fmt.Sprintf("%v", data.Metrics.TotalOutputTokens) }</dd>
-						<dt class="token-thinking">Thinking</dt>
-						<dd>{ fmt.Sprintf("%v", data.Metrics.TotalThinkingTokens) }</dd>
-						<dt class="token-cache">Cache Read</dt>
-						<dd>{ fmt.Sprintf("%v", data.Metrics.TotalCacheReadTokens) }</dd>
-					</dl>
+		<section x-data="chartDashboard()" x-init="init()">
+			<h2>Historical Trends</h2>
+			<div class="time-range">
+				<template x-for="r in ranges" :key="r.value">
+					<button
+						class="time-range__btn"
+						:class="{ 'time-range__btn--active': range === r.value }"
+						@click="setRange(r.value)"
+						x-text="r.label"
+					></button>
+				</template>
+			</div>
+			<div class="charts-grid">
+				<div class="chart-card chart-card--full">
+					<div class="chart-card__title">Sessions & Cost Over Time</div>
+					<div class="chart-card__container chart-card__container--full">
+						<canvas id="timeSeriesChart"></canvas>
+					</div>
+				</div>
+				<div class="chart-card">
+					<div class="chart-card__title">Cost by Model</div>
+					<div class="chart-card__container">
+						<canvas id="modelChart"></canvas>
+					</div>
+				</div>
+				<div class="chart-card">
+					<div class="chart-card__title">Activity by Hour of Day</div>
+					<div class="chart-card__container">
+						<canvas id="hourChart"></canvas>
+					</div>
+				</div>
+				<div class="chart-card chart-card--full">
+					<div class="chart-card__title">Token Usage Over Time</div>
+					<div class="chart-card__container chart-card__container--full">
+						<canvas id="tokenChart"></canvas>
+					</div>
 				</div>
 			</div>
 		</section>
+		@chartsScript()
 	}
+}
+
+templ chartsScript() {
+	<script>
+		function chartDashboard() {
+			return {
+				range: '24h',
+				ranges: [
+					{ value: '1h', label: '1H' },
+					{ value: '6h', label: '6H' },
+					{ value: '24h', label: '24H' },
+					{ value: '7d', label: '7D' },
+					{ value: '30d', label: '30D' },
+					{ value: '90d', label: '90D' }
+				],
+				charts: {},
+				initialized: false,
+
+				init() {
+					if (this.initialized) return;
+					this.initialized = true;
+					requestAnimationFrame(() => this.fetchAndRender());
+				},
+
+				async setRange(r) {
+					this.range = r;
+					await this.fetchAndRender();
+				},
+
+				async fetchAndRender() {
+					try {
+						const res = await fetch(`/api/charts?range=${this.range}`);
+						if (!res.ok) throw new Error(`HTTP ${res.status}`);
+						const data = await res.json();
+						this.renderCharts(data);
+					} catch (err) {
+						console.error('Failed to fetch chart data:', err);
+					}
+				},
+
+				renderCharts(data) {
+					const colors = {
+						primary: '#818cf8',
+						success: '#4ade80',
+						warning: '#fbbf24',
+						input: '#60a5fa',
+						output: '#4ade80',
+						thinking: '#fbbf24',
+						cache: '#a78bfa',
+						grid: '#27272a',
+						text: '#a1a1aa'
+					};
+
+					const chartOptions = {
+						responsive: true,
+						maintainAspectRatio: false,
+						plugins: {
+							legend: { labels: { color: colors.text } }
+						},
+						scales: {
+							x: { grid: { color: colors.grid }, ticks: { color: colors.text } },
+							y: { grid: { color: colors.grid }, ticks: { color: colors.text } }
+						}
+					};
+
+					// Time series chart
+					const ts = data.timeSeries || [];
+					this.updateChart('timeSeriesChart', {
+						type: 'line',
+						data: {
+							labels: ts.map(d => this.formatLabel(d.period)),
+							datasets: [
+								{
+									label: 'Sessions',
+									data: ts.map(d => d.sessions),
+									borderColor: colors.primary,
+									backgroundColor: colors.primary + '33',
+									fill: true,
+									tension: 0.3,
+									yAxisID: 'y'
+								},
+								{
+									label: 'Cost ($)',
+									data: ts.map(d => d.cost),
+									borderColor: colors.success,
+									backgroundColor: 'transparent',
+									tension: 0.3,
+									yAxisID: 'y1'
+								}
+							]
+						},
+						options: {
+							...chartOptions,
+							scales: {
+								x: { ...chartOptions.scales.x },
+								y: { ...chartOptions.scales.y, position: 'left', beginAtZero: true, suggestedMax: 10 },
+								y1: { ...chartOptions.scales.y, position: 'right', beginAtZero: true, suggestedMax: 1, grid: { drawOnChartArea: false } }
+							}
+						}
+					});
+
+					// Model distribution chart
+					this.updateChart('modelChart', {
+						type: 'doughnut',
+						data: {
+							labels: data.models.map(d => this.formatModel(d.model)),
+							datasets: [{
+								data: data.models.map(d => d.cost),
+								backgroundColor: [colors.primary, colors.success, colors.warning, colors.cache, colors.input]
+							}]
+						},
+						options: {
+							responsive: true,
+							maintainAspectRatio: false,
+							plugins: { legend: { position: 'bottom', labels: { color: colors.text } } }
+						}
+					});
+
+					// Hour of day distribution chart
+					const hourLabels = Array.from({length: 24}, (_, i) => `${i}:00`);
+					const hourData = hourLabels.map((_, i) => {
+						const found = (data.hourOfDay || []).find(d => d.hour === i);
+						return found ? found.sessions : 0;
+					});
+					this.updateChart('hourChart', {
+						type: 'bar',
+						data: {
+							labels: hourLabels,
+							datasets: [{
+								label: 'Sessions',
+								data: hourData,
+								backgroundColor: colors.primary + '99',
+								borderColor: colors.primary,
+								borderWidth: 1
+							}]
+						},
+						options: chartOptions
+					});
+
+					// Token usage chart
+					this.updateChart('tokenChart', {
+						type: 'bar',
+						data: {
+							labels: ts.map(d => this.formatLabel(d.period)),
+							datasets: [
+								{ label: 'Input', data: ts.map(d => d.tokens?.input || 0), backgroundColor: colors.input },
+								{ label: 'Output', data: ts.map(d => d.tokens?.output || 0), backgroundColor: colors.output },
+								{ label: 'Thinking', data: ts.map(d => d.tokens?.thinking || 0), backgroundColor: colors.thinking }
+							]
+						},
+						options: { ...chartOptions, scales: { x: { ...chartOptions.scales.x, stacked: true }, y: { ...chartOptions.scales.y, stacked: true, beginAtZero: true } } }
+					});
+				},
+
+				updateChart(id, config) {
+					const el = document.getElementById(id);
+					if (!el) {
+						console.error('Canvas not found:', id);
+						return;
+					}
+					if (this.charts[id]) this.charts[id].destroy();
+					this.charts[id] = new Chart(el, config);
+				},
+
+				formatLabel(period) {
+					if (!period) return '';
+					if (period.includes('T')) {
+						const d = new Date(period);
+						return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+					}
+					return new Date(period).toLocaleDateString([], { month: 'short', day: 'numeric' });
+				},
+
+				formatModel(m) {
+					if (!m) return 'Unknown';
+					return m.replace('claude-', '').replace(/-\d+$/, '');
+				}
+			};
+		}
+	</script>
 }
 
 func toFloat(v interface{}) float64 {

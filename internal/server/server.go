@@ -7,6 +7,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
+	"claude-watcher/internal/api"
 	"claude-watcher/internal/dashboard"
 	"claude-watcher/internal/database/sqlc"
 	"claude-watcher/internal/session_detail"
@@ -32,6 +33,7 @@ func NewHTTPServer(addr string, db *sql.DB) *http.Server {
 
 	queries := sqlc.New(db)
 
+	api.RegisterRoutes(r, api.NewHandler(queries))
 	dashboard.RegisterRoutes(r, dashboard.NewHandler(queries))
 	sessions.RegisterRoutes(r, sessions.NewHandler(queries))
 	session_detail.RegisterRoutes(r, session_detail.NewHandler(queries))

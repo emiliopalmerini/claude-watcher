@@ -90,65 +90,46 @@ func Dashboard(data DashboardData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</div></section><section><h2>Token Usage</h2><div class=\"token-breakdown\"><div class=\"token-legend\"><dl><dt class=\"token-input\">Input</dt><dd>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</div></section><section x-data=\"chartDashboard()\" x-init=\"init()\"><h2>Historical Trends</h2><div class=\"time-range\"><template x-for=\"r in ranges\" :key=\"r.value\"><button class=\"time-range__btn\" :class=\"{ 'time-range__btn--active': range === r.value }\" @click=\"setRange(r.value)\" x-text=\"r.label\"></button></template></div><div class=\"charts-grid\"><div class=\"chart-card chart-card--full\"><div class=\"chart-card__title\">Sessions & Cost Over Time</div><div class=\"chart-card__container chart-card__container--full\"><canvas id=\"timeSeriesChart\"></canvas></div></div><div class=\"chart-card\"><div class=\"chart-card__title\">Cost by Model</div><div class=\"chart-card__container\"><canvas id=\"modelChart\"></canvas></div></div><div class=\"chart-card\"><div class=\"chart-card__title\">Activity by Hour of Day</div><div class=\"chart-card__container\"><canvas id=\"hourChart\"></canvas></div></div><div class=\"chart-card chart-card--full\"><div class=\"chart-card__title\">Token Usage Over Time</div><div class=\"chart-card__container chart-card__container--full\"><canvas id=\"tokenChart\"></canvas></div></div></div></section>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var3 string
-			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%v", data.Metrics.TotalInputTokens))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/dashboard/dashboard.templ`, Line: 37, Col: 60}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</dd><dt class=\"token-output\">Output</dt><dd>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var4 string
-			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%v", data.Metrics.TotalOutputTokens))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/dashboard/dashboard.templ`, Line: 39, Col: 61}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</dd><dt class=\"token-thinking\">Thinking</dt><dd>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var5 string
-			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%v", data.Metrics.TotalThinkingTokens))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/dashboard/dashboard.templ`, Line: 41, Col: 63}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</dd><dt class=\"token-cache\">Cache Read</dt><dd>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var6 string
-			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%v", data.Metrics.TotalCacheReadTokens))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/dashboard/dashboard.templ`, Line: 43, Col: 64}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</dd></dl></div></div></section>")
+			templ_7745c5c3_Err = chartsScript().Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			return nil
 		})
 		templ_7745c5c3_Err = templates.Layout("Dashboard").Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		return nil
+	})
+}
+
+func chartsScript() templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var3 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var3 == nil {
+			templ_7745c5c3_Var3 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<script>\n\t\tfunction chartDashboard() {\n\t\t\treturn {\n\t\t\t\trange: '24h',\n\t\t\t\tranges: [\n\t\t\t\t\t{ value: '1h', label: '1H' },\n\t\t\t\t\t{ value: '6h', label: '6H' },\n\t\t\t\t\t{ value: '24h', label: '24H' },\n\t\t\t\t\t{ value: '7d', label: '7D' },\n\t\t\t\t\t{ value: '30d', label: '30D' },\n\t\t\t\t\t{ value: '90d', label: '90D' }\n\t\t\t\t],\n\t\t\t\tcharts: {},\n\t\t\t\tinitialized: false,\n\n\t\t\t\tinit() {\n\t\t\t\t\tif (this.initialized) return;\n\t\t\t\t\tthis.initialized = true;\n\t\t\t\t\trequestAnimationFrame(() => this.fetchAndRender());\n\t\t\t\t},\n\n\t\t\t\tasync setRange(r) {\n\t\t\t\t\tthis.range = r;\n\t\t\t\t\tawait this.fetchAndRender();\n\t\t\t\t},\n\n\t\t\t\tasync fetchAndRender() {\n\t\t\t\t\ttry {\n\t\t\t\t\t\tconst res = await fetch(`/api/charts?range=${this.range}`);\n\t\t\t\t\t\tif (!res.ok) throw new Error(`HTTP ${res.status}`);\n\t\t\t\t\t\tconst data = await res.json();\n\t\t\t\t\t\tthis.renderCharts(data);\n\t\t\t\t\t} catch (err) {\n\t\t\t\t\t\tconsole.error('Failed to fetch chart data:', err);\n\t\t\t\t\t}\n\t\t\t\t},\n\n\t\t\t\trenderCharts(data) {\n\t\t\t\t\tconst colors = {\n\t\t\t\t\t\tprimary: '#818cf8',\n\t\t\t\t\t\tsuccess: '#4ade80',\n\t\t\t\t\t\twarning: '#fbbf24',\n\t\t\t\t\t\tinput: '#60a5fa',\n\t\t\t\t\t\toutput: '#4ade80',\n\t\t\t\t\t\tthinking: '#fbbf24',\n\t\t\t\t\t\tcache: '#a78bfa',\n\t\t\t\t\t\tgrid: '#27272a',\n\t\t\t\t\t\ttext: '#a1a1aa'\n\t\t\t\t\t};\n\n\t\t\t\t\tconst chartOptions = {\n\t\t\t\t\t\tresponsive: true,\n\t\t\t\t\t\tmaintainAspectRatio: false,\n\t\t\t\t\t\tplugins: {\n\t\t\t\t\t\t\tlegend: { labels: { color: colors.text } }\n\t\t\t\t\t\t},\n\t\t\t\t\t\tscales: {\n\t\t\t\t\t\t\tx: { grid: { color: colors.grid }, ticks: { color: colors.text } },\n\t\t\t\t\t\t\ty: { grid: { color: colors.grid }, ticks: { color: colors.text } }\n\t\t\t\t\t\t}\n\t\t\t\t\t};\n\n\t\t\t\t\t// Time series chart\n\t\t\t\t\tconst ts = data.timeSeries || [];\n\t\t\t\t\tthis.updateChart('timeSeriesChart', {\n\t\t\t\t\t\ttype: 'line',\n\t\t\t\t\t\tdata: {\n\t\t\t\t\t\t\tlabels: ts.map(d => this.formatLabel(d.period)),\n\t\t\t\t\t\t\tdatasets: [\n\t\t\t\t\t\t\t\t{\n\t\t\t\t\t\t\t\t\tlabel: 'Sessions',\n\t\t\t\t\t\t\t\t\tdata: ts.map(d => d.sessions),\n\t\t\t\t\t\t\t\t\tborderColor: colors.primary,\n\t\t\t\t\t\t\t\t\tbackgroundColor: colors.primary + '33',\n\t\t\t\t\t\t\t\t\tfill: true,\n\t\t\t\t\t\t\t\t\ttension: 0.3,\n\t\t\t\t\t\t\t\t\tyAxisID: 'y'\n\t\t\t\t\t\t\t\t},\n\t\t\t\t\t\t\t\t{\n\t\t\t\t\t\t\t\t\tlabel: 'Cost ($)',\n\t\t\t\t\t\t\t\t\tdata: ts.map(d => d.cost),\n\t\t\t\t\t\t\t\t\tborderColor: colors.success,\n\t\t\t\t\t\t\t\t\tbackgroundColor: 'transparent',\n\t\t\t\t\t\t\t\t\ttension: 0.3,\n\t\t\t\t\t\t\t\t\tyAxisID: 'y1'\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t]\n\t\t\t\t\t\t},\n\t\t\t\t\t\toptions: {\n\t\t\t\t\t\t\t...chartOptions,\n\t\t\t\t\t\t\tscales: {\n\t\t\t\t\t\t\t\tx: { ...chartOptions.scales.x },\n\t\t\t\t\t\t\t\ty: { ...chartOptions.scales.y, position: 'left', beginAtZero: true, suggestedMax: 10 },\n\t\t\t\t\t\t\t\ty1: { ...chartOptions.scales.y, position: 'right', beginAtZero: true, suggestedMax: 1, grid: { drawOnChartArea: false } }\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t});\n\n\t\t\t\t\t// Model distribution chart\n\t\t\t\t\tthis.updateChart('modelChart', {\n\t\t\t\t\t\ttype: 'doughnut',\n\t\t\t\t\t\tdata: {\n\t\t\t\t\t\t\tlabels: data.models.map(d => this.formatModel(d.model)),\n\t\t\t\t\t\t\tdatasets: [{\n\t\t\t\t\t\t\t\tdata: data.models.map(d => d.cost),\n\t\t\t\t\t\t\t\tbackgroundColor: [colors.primary, colors.success, colors.warning, colors.cache, colors.input]\n\t\t\t\t\t\t\t}]\n\t\t\t\t\t\t},\n\t\t\t\t\t\toptions: {\n\t\t\t\t\t\t\tresponsive: true,\n\t\t\t\t\t\t\tmaintainAspectRatio: false,\n\t\t\t\t\t\t\tplugins: { legend: { position: 'bottom', labels: { color: colors.text } } }\n\t\t\t\t\t\t}\n\t\t\t\t\t});\n\n\t\t\t\t\t// Hour of day distribution chart\n\t\t\t\t\tconst hourLabels = Array.from({length: 24}, (_, i) => `${i}:00`);\n\t\t\t\t\tconst hourData = hourLabels.map((_, i) => {\n\t\t\t\t\t\tconst found = (data.hourOfDay || []).find(d => d.hour === i);\n\t\t\t\t\t\treturn found ? found.sessions : 0;\n\t\t\t\t\t});\n\t\t\t\t\tthis.updateChart('hourChart', {\n\t\t\t\t\t\ttype: 'bar',\n\t\t\t\t\t\tdata: {\n\t\t\t\t\t\t\tlabels: hourLabels,\n\t\t\t\t\t\t\tdatasets: [{\n\t\t\t\t\t\t\t\tlabel: 'Sessions',\n\t\t\t\t\t\t\t\tdata: hourData,\n\t\t\t\t\t\t\t\tbackgroundColor: colors.primary + '99',\n\t\t\t\t\t\t\t\tborderColor: colors.primary,\n\t\t\t\t\t\t\t\tborderWidth: 1\n\t\t\t\t\t\t\t}]\n\t\t\t\t\t\t},\n\t\t\t\t\t\toptions: chartOptions\n\t\t\t\t\t});\n\n\t\t\t\t\t// Token usage chart\n\t\t\t\t\tthis.updateChart('tokenChart', {\n\t\t\t\t\t\ttype: 'bar',\n\t\t\t\t\t\tdata: {\n\t\t\t\t\t\t\tlabels: ts.map(d => this.formatLabel(d.period)),\n\t\t\t\t\t\t\tdatasets: [\n\t\t\t\t\t\t\t\t{ label: 'Input', data: ts.map(d => d.tokens?.input || 0), backgroundColor: colors.input },\n\t\t\t\t\t\t\t\t{ label: 'Output', data: ts.map(d => d.tokens?.output || 0), backgroundColor: colors.output },\n\t\t\t\t\t\t\t\t{ label: 'Thinking', data: ts.map(d => d.tokens?.thinking || 0), backgroundColor: colors.thinking }\n\t\t\t\t\t\t\t]\n\t\t\t\t\t\t},\n\t\t\t\t\t\toptions: { ...chartOptions, scales: { x: { ...chartOptions.scales.x, stacked: true }, y: { ...chartOptions.scales.y, stacked: true, beginAtZero: true } } }\n\t\t\t\t\t});\n\t\t\t\t},\n\n\t\t\t\tupdateChart(id, config) {\n\t\t\t\t\tconst el = document.getElementById(id);\n\t\t\t\t\tif (!el) {\n\t\t\t\t\t\tconsole.error('Canvas not found:', id);\n\t\t\t\t\t\treturn;\n\t\t\t\t\t}\n\t\t\t\t\tif (this.charts[id]) this.charts[id].destroy();\n\t\t\t\t\tthis.charts[id] = new Chart(el, config);\n\t\t\t\t},\n\n\t\t\t\tformatLabel(period) {\n\t\t\t\t\tif (!period) return '';\n\t\t\t\t\tif (period.includes('T')) {\n\t\t\t\t\t\tconst d = new Date(period);\n\t\t\t\t\t\treturn d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });\n\t\t\t\t\t}\n\t\t\t\t\treturn new Date(period).toLocaleDateString([], { month: 'short', day: 'numeric' });\n\t\t\t\t},\n\n\t\t\t\tformatModel(m) {\n\t\t\t\t\tif (!m) return 'Unknown';\n\t\t\t\t\treturn m.replace('claude-', '').replace(/-\\d+$/, '');\n\t\t\t\t}\n\t\t\t};\n\t\t}\n\t</script>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

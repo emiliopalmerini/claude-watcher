@@ -48,3 +48,53 @@ SELECT DISTINCT git_branch FROM sessions WHERE git_branch != '' ORDER BY git_bra
 
 -- name: GetDistinctModels :many
 SELECT DISTINCT model FROM sessions WHERE model != '' ORDER BY model;
+
+-- name: GetHourlyMetrics :many
+SELECT
+    strftime('%Y-%m-%dT%H:00:00Z', timestamp) as period,
+    COUNT(*) as sessions,
+    COALESCE(SUM(estimated_cost_usd), 0) as cost,
+    COALESCE(SUM(input_tokens), 0) as input_tokens,
+    COALESCE(SUM(output_tokens), 0) as output_tokens,
+    COALESCE(SUM(thinking_tokens), 0) as thinking_tokens,
+    COALESCE(SUM(cache_read_tokens), 0) as cache_read_tokens,
+    COALESCE(SUM(tool_calls), 0) as tool_calls
+FROM sessions
+WHERE timestamp >= datetime('now', ? || ' hours')
+GROUP BY strftime('%Y-%m-%dT%H:00:00Z', timestamp)
+ORDER BY period ASC;
+
+-- name: GetDailyMetrics :many
+SELECT
+    date(timestamp) as period,
+    COUNT(*) as sessions,
+    COALESCE(SUM(estimated_cost_usd), 0) as cost,
+    COALESCE(SUM(input_tokens), 0) as input_tokens,
+    COALESCE(SUM(output_tokens), 0) as output_tokens,
+    COALESCE(SUM(thinking_tokens), 0) as thinking_tokens,
+    COALESCE(SUM(cache_read_tokens), 0) as cache_read_tokens,
+    COALESCE(SUM(tool_calls), 0) as tool_calls
+FROM sessions
+WHERE date(timestamp) >= date('now', ? || ' days')
+GROUP BY date(timestamp)
+ORDER BY period ASC;
+
+-- name: GetModelDistribution :many
+SELECT
+    COALESCE(model, 'Unknown') as model,
+    COUNT(*) as sessions,
+    COALESCE(SUM(estimated_cost_usd), 0) as cost
+FROM sessions
+WHERE timestamp >= datetime('now', ? || ' hours')
+GROUP BY model
+ORDER BY sessions DESC;
+
+-- name: GetHourOfDayDistribution :many
+SELECT
+    CAST(strftime('%H', timestamp) AS INTEGER) as hour,
+    COUNT(*) as sessions,
+    COALESCE(SUM(estimated_cost_usd), 0) as cost
+FROM sessions
+WHERE timestamp >= datetime('now', ? || ' hours')
+GROUP BY strftime('%H', timestamp)
+ORDER BY hour ASC;

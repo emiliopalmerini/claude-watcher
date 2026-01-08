@@ -21,6 +21,65 @@ func (q *Queries) CountSessions(ctx context.Context) (int64, error) {
 	return count, err
 }
 
+const getDailyMetrics = `-- name: GetDailyMetrics :many
+SELECT
+    date(timestamp) as period,
+    COUNT(*) as sessions,
+    COALESCE(SUM(estimated_cost_usd), 0) as cost,
+    COALESCE(SUM(input_tokens), 0) as input_tokens,
+    COALESCE(SUM(output_tokens), 0) as output_tokens,
+    COALESCE(SUM(thinking_tokens), 0) as thinking_tokens,
+    COALESCE(SUM(cache_read_tokens), 0) as cache_read_tokens,
+    COALESCE(SUM(tool_calls), 0) as tool_calls
+FROM sessions
+WHERE date(timestamp) >= date('now', ? || ' days')
+GROUP BY date(timestamp)
+ORDER BY period ASC
+`
+
+type GetDailyMetricsRow struct {
+	Period          interface{} `json:"period"`
+	Sessions        int64       `json:"sessions"`
+	Cost            interface{} `json:"cost"`
+	InputTokens     interface{} `json:"input_tokens"`
+	OutputTokens    interface{} `json:"output_tokens"`
+	ThinkingTokens  interface{} `json:"thinking_tokens"`
+	CacheReadTokens interface{} `json:"cache_read_tokens"`
+	ToolCalls       interface{} `json:"tool_calls"`
+}
+
+func (q *Queries) GetDailyMetrics(ctx context.Context, dollar_1 sql.NullString) ([]GetDailyMetricsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getDailyMetrics, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetDailyMetricsRow{}
+	for rows.Next() {
+		var i GetDailyMetricsRow
+		if err := rows.Scan(
+			&i.Period,
+			&i.Sessions,
+			&i.Cost,
+			&i.InputTokens,
+			&i.OutputTokens,
+			&i.ThinkingTokens,
+			&i.CacheReadTokens,
+			&i.ToolCalls,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getDashboardMetrics = `-- name: GetDashboardMetrics :one
 SELECT
     COUNT(*) as total_sessions,
@@ -135,6 +194,145 @@ func (q *Queries) GetDistinctModels(ctx context.Context) ([]sql.NullString, erro
 			return nil, err
 		}
 		items = append(items, model)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getHourOfDayDistribution = `-- name: GetHourOfDayDistribution :many
+SELECT
+    CAST(strftime('%H', timestamp) AS INTEGER) as hour,
+    COUNT(*) as sessions,
+    COALESCE(SUM(estimated_cost_usd), 0) as cost
+FROM sessions
+WHERE timestamp >= datetime('now', ? || ' hours')
+GROUP BY strftime('%H', timestamp)
+ORDER BY hour ASC
+`
+
+type GetHourOfDayDistributionRow struct {
+	Hour     int64       `json:"hour"`
+	Sessions int64       `json:"sessions"`
+	Cost     interface{} `json:"cost"`
+}
+
+func (q *Queries) GetHourOfDayDistribution(ctx context.Context, dollar_1 sql.NullString) ([]GetHourOfDayDistributionRow, error) {
+	rows, err := q.db.QueryContext(ctx, getHourOfDayDistribution, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetHourOfDayDistributionRow{}
+	for rows.Next() {
+		var i GetHourOfDayDistributionRow
+		if err := rows.Scan(&i.Hour, &i.Sessions, &i.Cost); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getHourlyMetrics = `-- name: GetHourlyMetrics :many
+SELECT
+    strftime('%Y-%m-%dT%H:00:00Z', timestamp) as period,
+    COUNT(*) as sessions,
+    COALESCE(SUM(estimated_cost_usd), 0) as cost,
+    COALESCE(SUM(input_tokens), 0) as input_tokens,
+    COALESCE(SUM(output_tokens), 0) as output_tokens,
+    COALESCE(SUM(thinking_tokens), 0) as thinking_tokens,
+    COALESCE(SUM(cache_read_tokens), 0) as cache_read_tokens,
+    COALESCE(SUM(tool_calls), 0) as tool_calls
+FROM sessions
+WHERE timestamp >= datetime('now', ? || ' hours')
+GROUP BY strftime('%Y-%m-%dT%H:00:00Z', timestamp)
+ORDER BY period ASC
+`
+
+type GetHourlyMetricsRow struct {
+	Period          interface{} `json:"period"`
+	Sessions        int64       `json:"sessions"`
+	Cost            interface{} `json:"cost"`
+	InputTokens     interface{} `json:"input_tokens"`
+	OutputTokens    interface{} `json:"output_tokens"`
+	ThinkingTokens  interface{} `json:"thinking_tokens"`
+	CacheReadTokens interface{} `json:"cache_read_tokens"`
+	ToolCalls       interface{} `json:"tool_calls"`
+}
+
+func (q *Queries) GetHourlyMetrics(ctx context.Context, dollar_1 sql.NullString) ([]GetHourlyMetricsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getHourlyMetrics, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetHourlyMetricsRow{}
+	for rows.Next() {
+		var i GetHourlyMetricsRow
+		if err := rows.Scan(
+			&i.Period,
+			&i.Sessions,
+			&i.Cost,
+			&i.InputTokens,
+			&i.OutputTokens,
+			&i.ThinkingTokens,
+			&i.CacheReadTokens,
+			&i.ToolCalls,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getModelDistribution = `-- name: GetModelDistribution :many
+SELECT
+    COALESCE(model, 'Unknown') as model,
+    COUNT(*) as sessions,
+    COALESCE(SUM(estimated_cost_usd), 0) as cost
+FROM sessions
+WHERE timestamp >= datetime('now', ? || ' hours')
+GROUP BY model
+ORDER BY sessions DESC
+`
+
+type GetModelDistributionRow struct {
+	Model    string      `json:"model"`
+	Sessions int64       `json:"sessions"`
+	Cost     interface{} `json:"cost"`
+}
+
+func (q *Queries) GetModelDistribution(ctx context.Context, dollar_1 sql.NullString) ([]GetModelDistributionRow, error) {
+	rows, err := q.db.QueryContext(ctx, getModelDistribution, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetModelDistributionRow{}
+	for rows.Next() {
+		var i GetModelDistributionRow
+		if err := rows.Scan(&i.Model, &i.Sessions, &i.Cost); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
