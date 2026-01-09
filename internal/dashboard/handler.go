@@ -19,7 +19,7 @@ func (h *Handler) Show(w http.ResponseWriter, r *http.Request) {
 
 	metrics, err := h.queries.GetDashboardMetrics(ctx)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Unable to load dashboard data", http.StatusInternalServerError)
 		return
 	}
 
