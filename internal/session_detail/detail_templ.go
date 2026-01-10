@@ -9,11 +9,10 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import (
-	"database/sql"
-	"encoding/json"
 	"fmt"
 
 	"claude-watcher/internal/database/sqlc"
+	"claude-watcher/internal/shared/format"
 	"claude-watcher/internal/shared/templates"
 )
 
@@ -54,7 +53,7 @@ func SessionDetail(s sqlc.Session) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var3 = []any{"status-badge", "status-" + nullStr(s.ExitReason)}
+			var templ_7745c5c3_Var3 = []any{"status-badge", "status-" + format.NullStr(s.ExitReason)}
 			templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var3...)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -77,9 +76,9 @@ func SessionDetail(s sqlc.Session) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var5 string
-			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(nullStr(s.ExitReason))
+			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(format.NullStr(s.ExitReason))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/session_detail/detail.templ`, Line: 17, Col: 27}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/session_detail/detail.templ`, Line: 16, Col: 34}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -92,7 +91,7 @@ func SessionDetail(s sqlc.Session) templ.Component {
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(s.SessionID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/session_detail/detail.templ`, Line: 23, Col: 21}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/session_detail/detail.templ`, Line: 22, Col: 21}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -105,7 +104,7 @@ func SessionDetail(s sqlc.Session) templ.Component {
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(s.Timestamp)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/session_detail/detail.templ`, Line: 25, Col: 21}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/session_detail/detail.templ`, Line: 24, Col: 21}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
@@ -118,7 +117,7 @@ func SessionDetail(s sqlc.Session) templ.Component {
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(s.Hostname)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/session_detail/detail.templ`, Line: 27, Col: 20}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/session_detail/detail.templ`, Line: 26, Col: 20}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
@@ -129,9 +128,9 @@ func SessionDetail(s sqlc.Session) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var9 string
-			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(nullStr(s.WorkingDirectory))
+			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(format.NullStr(s.WorkingDirectory))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/session_detail/detail.templ`, Line: 29, Col: 43}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/session_detail/detail.templ`, Line: 28, Col: 50}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
@@ -142,9 +141,9 @@ func SessionDetail(s sqlc.Session) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var10 string
-			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(nullStr(s.GitBranch))
+			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(format.NullStr(s.GitBranch))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/session_detail/detail.templ`, Line: 31, Col: 30}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/session_detail/detail.templ`, Line: 30, Col: 37}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
@@ -155,9 +154,9 @@ func SessionDetail(s sqlc.Session) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var11 string
-			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(formatDuration(s.DurationSeconds))
+			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(format.Duration(s.DurationSeconds))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/session_detail/detail.templ`, Line: 33, Col: 43}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/session_detail/detail.templ`, Line: 32, Col: 44}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
@@ -168,9 +167,9 @@ func SessionDetail(s sqlc.Session) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var12 string
-			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(nullStr(s.Model))
+			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(format.NullStr(s.Model))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/session_detail/detail.templ`, Line: 35, Col: 26}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/session_detail/detail.templ`, Line: 34, Col: 33}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 			if templ_7745c5c3_Err != nil {
@@ -181,9 +180,9 @@ func SessionDetail(s sqlc.Session) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var13 string
-			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(nullStr(s.ClaudeVersion))
+			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(format.NullStr(s.ClaudeVersion))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/session_detail/detail.templ`, Line: 37, Col: 34}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/session_detail/detail.templ`, Line: 36, Col: 41}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {
@@ -193,19 +192,19 @@ func SessionDetail(s sqlc.Session) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templates.StatsCard("User Prompts", nullInt(s.UserPrompts), "sessions").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = templates.StatsCard("User Prompts", format.NullIntFormatted(s.UserPrompts), "sessions").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templates.StatsCard("Responses", nullInt(s.AssistantResponses), "sessions").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = templates.StatsCard("Responses", format.NullIntFormatted(s.AssistantResponses), "sessions").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templates.StatsCard("Tool Calls", nullInt(s.ToolCalls), "tokens").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = templates.StatsCard("Tool Calls", format.NullIntFormatted(s.ToolCalls), "tokens").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templates.StatsCard("Errors", nullInt(s.ErrorsCount), "cost").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = templates.StatsCard("Errors", format.NullIntFormatted(s.ErrorsCount), "cost").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -214,9 +213,9 @@ func SessionDetail(s sqlc.Session) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var14 string
-			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(nullInt(s.InputTokens))
+			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(format.NullIntFormatted(s.InputTokens))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/session_detail/detail.templ`, Line: 55, Col: 34}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/session_detail/detail.templ`, Line: 54, Col: 50}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 			if templ_7745c5c3_Err != nil {
@@ -227,9 +226,9 @@ func SessionDetail(s sqlc.Session) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var15 string
-			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(nullInt(s.OutputTokens))
+			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(format.NullIntFormatted(s.OutputTokens))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/session_detail/detail.templ`, Line: 59, Col: 35}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/session_detail/detail.templ`, Line: 58, Col: 51}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 			if templ_7745c5c3_Err != nil {
@@ -240,9 +239,9 @@ func SessionDetail(s sqlc.Session) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var16 string
-			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(nullInt(s.ThinkingTokens))
+			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(format.NullIntFormatted(s.ThinkingTokens))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/session_detail/detail.templ`, Line: 63, Col: 37}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/session_detail/detail.templ`, Line: 62, Col: 53}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 			if templ_7745c5c3_Err != nil {
@@ -253,9 +252,9 @@ func SessionDetail(s sqlc.Session) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var17 string
-			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(nullInt(s.CacheReadTokens))
+			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(format.NullIntFormatted(s.CacheReadTokens))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/session_detail/detail.templ`, Line: 67, Col: 38}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/session_detail/detail.templ`, Line: 66, Col: 54}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 			if templ_7745c5c3_Err != nil {
@@ -266,9 +265,9 @@ func SessionDetail(s sqlc.Session) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var18 string
-			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(nullCost(s.EstimatedCostUsd))
+			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(format.NullCostPrecise(s.EstimatedCostUsd))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/session_detail/detail.templ`, Line: 71, Col: 74}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/session_detail/detail.templ`, Line: 70, Col: 88}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 			if templ_7745c5c3_Err != nil {
@@ -283,7 +282,7 @@ func SessionDetail(s sqlc.Session) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				for name, count := range parseTools(s.ToolsBreakdown) {
+				for name, count := range format.ParseToolsJSON(s.ToolsBreakdown) {
 					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<li><span class=\"tool-name\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
@@ -291,7 +290,7 @@ func SessionDetail(s sqlc.Session) templ.Component {
 					var templ_7745c5c3_Var19 string
 					templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(name)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/session_detail/detail.templ`, Line: 82, Col: 37}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/session_detail/detail.templ`, Line: 81, Col: 37}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 					if templ_7745c5c3_Err != nil {
@@ -304,7 +303,7 @@ func SessionDetail(s sqlc.Session) templ.Component {
 					var templ_7745c5c3_Var20 string
 					templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", count))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/session_detail/detail.templ`, Line: 83, Col: 58}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/session_detail/detail.templ`, Line: 82, Col: 58}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 					if templ_7745c5c3_Err != nil {
@@ -332,7 +331,7 @@ func SessionDetail(s sqlc.Session) templ.Component {
 				var templ_7745c5c3_Var21 string
 				templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(s.Summary.String)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/session_detail/detail.templ`, Line: 92, Col: 25}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/session_detail/detail.templ`, Line: 91, Col: 25}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 				if templ_7745c5c3_Err != nil {
@@ -345,71 +344,12 @@ func SessionDetail(s sqlc.Session) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = templates.Layout("Session "+shortID(s.SessionID)).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = templates.Layout("Session "+format.ShortID(s.SessionID)).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		return nil
 	})
-}
-
-func shortID(id string) string {
-	if len(id) > 8 {
-		return id[:8]
-	}
-	return id
-}
-
-func nullStr(s sql.NullString) string {
-	if s.Valid {
-		return s.String
-	}
-	return "-"
-}
-
-func nullInt(i sql.NullInt64) string {
-	if i.Valid {
-		return formatNumber(i.Int64)
-	}
-	return "0"
-}
-
-func formatNumber(n int64) string {
-	if n < 1000 {
-		return fmt.Sprintf("%d", n)
-	}
-	if n < 1000000 {
-		return fmt.Sprintf("%.1fK", float64(n)/1000)
-	}
-	return fmt.Sprintf("%.1fM", float64(n)/1000000)
-}
-
-func nullCost(f sql.NullFloat64) string {
-	if f.Valid {
-		return fmt.Sprintf("$%.4f", f.Float64)
-	}
-	return "$0.00"
-}
-
-func formatDuration(d sql.NullInt64) string {
-	if !d.Valid {
-		return "-"
-	}
-	mins := d.Int64 / 60
-	secs := d.Int64 % 60
-	if mins > 0 {
-		return fmt.Sprintf("%dm %ds", mins, secs)
-	}
-	return fmt.Sprintf("%ds", secs)
-}
-
-func parseTools(s sql.NullString) map[string]int {
-	result := make(map[string]int)
-	if !s.Valid || s.String == "" {
-		return result
-	}
-	json.Unmarshal([]byte(s.String), &result)
-	return result
 }
 
 var _ = templruntime.GeneratedTemplate

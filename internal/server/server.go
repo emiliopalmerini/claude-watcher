@@ -15,7 +15,14 @@ import (
 	sharedmw "claude-watcher/internal/shared/middleware"
 )
 
-func NewHTTPServer(addr string, db *sql.DB) *http.Server {
+// Config holds server-specific configuration.
+type Config struct {
+	Addr              string
+	DefaultPageSize   int64
+	DefaultRangeHours int
+}
+
+func NewHTTPServer(cfg Config, db *sql.DB) *http.Server {
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)
@@ -33,13 +40,20 @@ func NewHTTPServer(addr string, db *sql.DB) *http.Server {
 
 	queries := sqlc.New(db)
 
-	api.RegisterRoutes(r, api.NewHandler(queries))
-	dashboard.RegisterRoutes(r, dashboard.NewHandler(queries))
-	sessions.RegisterRoutes(r, sessions.NewHandler(queries))
-	session_detail.RegisterRoutes(r, session_detail.NewHandler(queries))
+	// Create repositories
+	dashboardRepo := dashboard.NewSQLCRepository(queries)
+	sessionsRepo := sessions.NewSQLCRepository(queries)
+	sessionDetailRepo := session_detail.NewSQLCRepository(queries)
+	apiRepo := api.NewSQLCRepository(queries)
+
+	// Register routes with handlers
+	dashboard.RegisterRoutes(r, dashboard.NewHandler(dashboardRepo))
+	sessions.RegisterRoutes(r, sessions.NewHandler(sessionsRepo, cfg.DefaultPageSize))
+	session_detail.RegisterRoutes(r, session_detail.NewHandler(sessionDetailRepo))
+	api.RegisterRoutes(r, api.NewHandler(apiRepo, cfg.DefaultRangeHours))
 
 	return &http.Server{
-		Addr:    addr,
+		Addr:    cfg.Addr,
 		Handler: r,
 	}
 }

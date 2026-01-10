@@ -25,7 +25,13 @@ func Run(cfg *Config) error {
 		return err
 	}
 
-	httpSrv := server.NewHTTPServer(cfg.Addr, db)
+	serverCfg := server.Config{
+		Addr:              cfg.Addr,
+		DefaultPageSize:   cfg.DefaultPageSize,
+		DefaultRangeHours: cfg.DefaultRangeHours,
+	}
+
+	httpSrv := server.NewHTTPServer(serverCfg, db)
 	go func() {
 		log.Printf("http server listening on %s", cfg.Addr)
 		if err := httpSrv.ListenAndServe(); err != http.ErrServerClosed {

@@ -12,6 +12,12 @@ type Config struct {
 
 	TursoDatabaseURL string `envconfig:"TURSO_DATABASE_URL" required:"true"`
 	TursoAuthToken   string `envconfig:"TURSO_AUTH_TOKEN" required:"true"`
+
+	// Pagination
+	DefaultPageSize int64 `envconfig:"DEFAULT_PAGE_SIZE" default:"20"`
+
+	// Chart defaults
+	DefaultRangeHours int `envconfig:"DEFAULT_RANGE_HOURS" default:"168"`
 }
 
 func New() (*Config, error) {

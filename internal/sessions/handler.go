@@ -5,15 +5,17 @@ import (
 	"strconv"
 
 	"claude-watcher/internal/database/sqlc"
+	apperrors "claude-watcher/internal/shared/errors"
 	"claude-watcher/internal/shared/middleware"
 )
 
 type Handler struct {
-	queries *sqlc.Queries
+	repo     Repository
+	pageSize int64
 }
 
-func NewHandler(queries *sqlc.Queries) *Handler {
-	return &Handler{queries: queries}
+func NewHandler(repo Repository, pageSize int64) *Handler {
+	return &Handler{repo: repo, pageSize: pageSize}
 }
 
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
@@ -23,20 +25,23 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	if page < 1 {
 		page = 1
 	}
-	pageSize := int64(20)
-	offset := int64((page - 1)) * pageSize
+	offset := int64(page-1) * h.pageSize
 
-	sessions, err := h.queries.ListSessions(ctx, sqlc.ListSessionsParams{
-		Limit:  pageSize,
+	sessions, err := h.repo.ListSessions(ctx, sqlc.ListSessionsParams{
+		Limit:  h.pageSize,
 		Offset: offset,
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		apperrors.HandleError(w, err)
 		return
 	}
 
-	count, _ := h.queries.CountSessions(ctx)
-	totalPages := int((count + pageSize - 1) / pageSize)
+	count, err := h.repo.CountSessions(ctx)
+	if err != nil {
+		apperrors.HandleError(w, err)
+		return
+	}
+	totalPages := int((count + h.pageSize - 1) / h.pageSize)
 
 	data := SessionsData{
 		Sessions:   sessions,

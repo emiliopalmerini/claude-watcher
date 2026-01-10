@@ -1,33 +1,28 @@
 package session_detail
 
 import (
-	"database/sql"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 
-	"claude-watcher/internal/database/sqlc"
+	apperrors "claude-watcher/internal/shared/errors"
 )
 
 type Handler struct {
-	queries *sqlc.Queries
+	repo Repository
 }
 
-func NewHandler(queries *sqlc.Queries) *Handler {
-	return &Handler{queries: queries}
+func NewHandler(repo Repository) *Handler {
+	return &Handler{repo: repo}
 }
 
 func (h *Handler) Show(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	sessionID := chi.URLParam(r, "sessionID")
 
-	session, err := h.queries.GetSessionByID(ctx, sessionID)
+	session, err := h.repo.GetSessionByID(ctx, sessionID)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			http.Error(w, "session not found", http.StatusNotFound)
-			return
-		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		apperrors.HandleError(w, apperrors.HandleDBError(err, "session not found"))
 		return
 	}
 

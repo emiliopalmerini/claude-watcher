@@ -1,20 +1,19 @@
 package session_detail
 
 import (
-	"database/sql"
-	"encoding/json"
 	"fmt"
 
 	"claude-watcher/internal/database/sqlc"
+	"claude-watcher/internal/shared/format"
 	"claude-watcher/internal/shared/templates"
 )
 
 templ SessionDetail(s sqlc.Session) {
-	@templates.Layout("Session " + shortID(s.SessionID)) {
+	@templates.Layout("Session " + format.ShortID(s.SessionID)) {
 		<div class="session-header">
 			<h1>Session Details</h1>
-			<span class={ "status-badge", "status-" + nullStr(s.ExitReason) }>
-				{ nullStr(s.ExitReason) }
+			<span class={ "status-badge", "status-" + format.NullStr(s.ExitReason) }>
+				{ format.NullStr(s.ExitReason) }
 			</span>
 		</div>
 		<section class="session-meta">
@@ -26,24 +25,24 @@ templ SessionDetail(s sqlc.Session) {
 				<dt>Hostname</dt>
 				<dd>{ s.Hostname }</dd>
 				<dt>Working Directory</dt>
-				<dd><code>{ nullStr(s.WorkingDirectory) }</code></dd>
+				<dd><code>{ format.NullStr(s.WorkingDirectory) }</code></dd>
 				<dt>Git Branch</dt>
-				<dd>{ nullStr(s.GitBranch) }</dd>
+				<dd>{ format.NullStr(s.GitBranch) }</dd>
 				<dt>Duration</dt>
-				<dd>{ formatDuration(s.DurationSeconds) }</dd>
+				<dd>{ format.Duration(s.DurationSeconds) }</dd>
 				<dt>Model</dt>
-				<dd>{ nullStr(s.Model) }</dd>
+				<dd>{ format.NullStr(s.Model) }</dd>
 				<dt>Claude Version</dt>
-				<dd>{ nullStr(s.ClaudeVersion) }</dd>
+				<dd>{ format.NullStr(s.ClaudeVersion) }</dd>
 			</dl>
 		</section>
 		<section>
 			<h2>Activity</h2>
 			<div class="stats-grid">
-				@templates.StatsCard("User Prompts", nullInt(s.UserPrompts), "sessions")
-				@templates.StatsCard("Responses", nullInt(s.AssistantResponses), "sessions")
-				@templates.StatsCard("Tool Calls", nullInt(s.ToolCalls), "tokens")
-				@templates.StatsCard("Errors", nullInt(s.ErrorsCount), "cost")
+				@templates.StatsCard("User Prompts", format.NullIntFormatted(s.UserPrompts), "sessions")
+				@templates.StatsCard("Responses", format.NullIntFormatted(s.AssistantResponses), "sessions")
+				@templates.StatsCard("Tool Calls", format.NullIntFormatted(s.ToolCalls), "tokens")
+				@templates.StatsCard("Errors", format.NullIntFormatted(s.ErrorsCount), "cost")
 			</div>
 		</section>
 		<section>
@@ -52,23 +51,23 @@ templ SessionDetail(s sqlc.Session) {
 				<div class="token-legend">
 					<div class="token-item">
 						<dt class="token-input">Input</dt>
-						<dd>{ nullInt(s.InputTokens) }</dd>
+						<dd>{ format.NullIntFormatted(s.InputTokens) }</dd>
 					</div>
 					<div class="token-item">
 						<dt class="token-output">Output</dt>
-						<dd>{ nullInt(s.OutputTokens) }</dd>
+						<dd>{ format.NullIntFormatted(s.OutputTokens) }</dd>
 					</div>
 					<div class="token-item">
 						<dt class="token-thinking">Thinking</dt>
-						<dd>{ nullInt(s.ThinkingTokens) }</dd>
+						<dd>{ format.NullIntFormatted(s.ThinkingTokens) }</dd>
 					</div>
 					<div class="token-item">
 						<dt class="token-cache">Cache</dt>
-						<dd>{ nullInt(s.CacheReadTokens) }</dd>
+						<dd>{ format.NullIntFormatted(s.CacheReadTokens) }</dd>
 					</div>
 					<div class="token-item" style="margin-left: auto;">
 						<dt style="color: var(--color-text-secondary);">Cost</dt>
-						<dd style="color: var(--color-text);">{ nullCost(s.EstimatedCostUsd) }</dd>
+						<dd style="color: var(--color-text);">{ format.NullCostPrecise(s.EstimatedCostUsd) }</dd>
 					</div>
 				</div>
 			</div>
@@ -77,7 +76,7 @@ templ SessionDetail(s sqlc.Session) {
 			<section>
 				<h2>Tools Used</h2>
 				<ul class="tools-list">
-					for name, count := range parseTools(s.ToolsBreakdown) {
+					for name, count := range format.ParseToolsJSON(s.ToolsBreakdown) {
 						<li>
 							<span class="tool-name">{ name }</span>
 							<span class="tool-count">{ fmt.Sprintf("%d", count) }</span>
@@ -93,63 +92,4 @@ templ SessionDetail(s sqlc.Session) {
 			</section>
 		}
 	}
-}
-
-func shortID(id string) string {
-	if len(id) > 8 {
-		return id[:8]
-	}
-	return id
-}
-
-func nullStr(s sql.NullString) string {
-	if s.Valid {
-		return s.String
-	}
-	return "-"
-}
-
-func nullInt(i sql.NullInt64) string {
-	if i.Valid {
-		return formatNumber(i.Int64)
-	}
-	return "0"
-}
-
-func formatNumber(n int64) string {
-	if n < 1000 {
-		return fmt.Sprintf("%d", n)
-	}
-	if n < 1000000 {
-		return fmt.Sprintf("%.1fK", float64(n)/1000)
-	}
-	return fmt.Sprintf("%.1fM", float64(n)/1000000)
-}
-
-func nullCost(f sql.NullFloat64) string {
-	if f.Valid {
-		return fmt.Sprintf("$%.4f", f.Float64)
-	}
-	return "$0.00"
-}
-
-func formatDuration(d sql.NullInt64) string {
-	if !d.Valid {
-		return "-"
-	}
-	mins := d.Int64 / 60
-	secs := d.Int64 % 60
-	if mins > 0 {
-		return fmt.Sprintf("%dm %ds", mins, secs)
-	}
-	return fmt.Sprintf("%ds", secs)
-}
-
-func parseTools(s sql.NullString) map[string]int {
-	result := make(map[string]int)
-	if !s.Valid || s.String == "" {
-		return result
-	}
-	json.Unmarshal([]byte(s.String), &result)
-	return result
 }

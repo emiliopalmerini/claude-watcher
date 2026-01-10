@@ -3,28 +3,37 @@ package dashboard
 import (
 	"net/http"
 
-	"claude-watcher/internal/database/sqlc"
+	apperrors "claude-watcher/internal/shared/errors"
 )
 
 type Handler struct {
-	queries *sqlc.Queries
+	repo Repository
 }
 
-func NewHandler(queries *sqlc.Queries) *Handler {
-	return &Handler{queries: queries}
+func NewHandler(repo Repository) *Handler {
+	return &Handler{repo: repo}
 }
 
 func (h *Handler) Show(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	metrics, err := h.queries.GetDashboardMetrics(ctx)
+	metrics, err := h.repo.GetDashboardMetrics(ctx)
 	if err != nil {
-		http.Error(w, "Unable to load dashboard data", http.StatusInternalServerError)
+		apperrors.HandleError(w, err)
 		return
 	}
 
-	today, _ := h.queries.GetTodayMetrics(ctx)
-	week, _ := h.queries.GetWeekMetrics(ctx)
+	today, err := h.repo.GetTodayMetrics(ctx)
+	if err != nil {
+		apperrors.HandleError(w, err)
+		return
+	}
+
+	week, err := h.repo.GetWeekMetrics(ctx)
+	if err != nil {
+		apperrors.HandleError(w, err)
+		return
+	}
 
 	data := DashboardData{
 		Metrics: metrics,

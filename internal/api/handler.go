@@ -13,30 +13,36 @@ import (
 )
 
 type Handler struct {
-	queries *sqlc.Queries
+	repo              Repository
+	defaultRangeHours int
 }
 
-func NewHandler(queries *sqlc.Queries) *Handler {
-	return &Handler{queries: queries}
+func NewHandler(repo Repository, defaultRangeHours int) *Handler {
+	return &Handler{repo: repo, defaultRangeHours: defaultRangeHours}
 }
 
 func (h *Handler) GetChartData(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	hours := rangeToHours(r.URL.Query().Get("range"))
+	hours := h.rangeToHours(r.URL.Query().Get("range"))
 
 	data := ChartData{Range: r.URL.Query().Get("range")}
 	if data.Range == "" {
-		data.Range = "24h"
+		data.Range = "7d"
 	}
 
 	var err error
-	if data.TimeSeries, err = h.fetchTimeSeries(ctx, hours); err != nil {
+	data.TimeSeries, err = h.fetchTimeSeries(ctx, hours)
+	if err != nil {
 		log.Printf("error fetching time series: %v", err)
 	}
-	if data.Models, err = h.fetchModels(ctx, hours); err != nil {
+
+	data.Models, err = h.fetchModels(ctx, hours)
+	if err != nil {
 		log.Printf("error fetching model distribution: %v", err)
 	}
-	if data.HourOfDay, err = h.fetchHourOfDay(ctx, hours); err != nil {
+
+	data.HourOfDay, err = h.fetchHourOfDay(ctx, hours)
+	if err != nil {
 		log.Printf("error fetching hour of day distribution: %v", err)
 	}
 
@@ -49,7 +55,7 @@ func (h *Handler) fetchTimeSeries(ctx context.Context, hours int) ([]TimePoint, 
 	if days < 1 {
 		days = 1
 	}
-	rows, err := h.queries.GetDailyMetrics(ctx, sqlParam(-days))
+	rows, err := h.repo.GetDailyMetrics(ctx, sqlParam(-days))
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +68,7 @@ func (h *Handler) fetchTimeSeries(ctx context.Context, hours int) ([]TimePoint, 
 }
 
 func (h *Handler) fetchModels(ctx context.Context, hours int) ([]ModelPoint, error) {
-	rows, err := h.queries.GetModelDistribution(ctx, sqlParam(-hours))
+	rows, err := h.repo.GetModelDistribution(ctx, sqlParam(-hours))
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +78,7 @@ func (h *Handler) fetchModels(ctx context.Context, hours int) ([]ModelPoint, err
 }
 
 func (h *Handler) fetchHourOfDay(ctx context.Context, hours int) ([]HourPoint, error) {
-	rows, err := h.queries.GetHourOfDayDistribution(ctx, sqlParam(-hours))
+	rows, err := h.repo.GetHourOfDayDistribution(ctx, sqlParam(-hours))
 	if err != nil {
 		return nil, err
 	}
@@ -81,16 +87,16 @@ func (h *Handler) fetchHourOfDay(ctx context.Context, hours int) ([]HourPoint, e
 	}), nil
 }
 
-func sqlParam(v int) sql.NullString {
-	return sql.NullString{String: strconv.Itoa(v), Valid: true}
+func (h *Handler) rangeToHours(r string) int {
+	m := map[string]int{"24h": 24, "7d": 168, "30d": 720, "90d": 2160}
+	if hours, ok := m[r]; ok {
+		return hours
+	}
+	return h.defaultRangeHours
 }
 
-func rangeToHours(r string) int {
-	m := map[string]int{"7d": 168, "30d": 720, "90d": 2160}
-	if h, ok := m[r]; ok {
-		return h
-	}
-	return 168
+func sqlParam(v int) sql.NullString {
+	return sql.NullString{String: strconv.Itoa(v), Valid: true}
 }
 
 func mapSlice[T, U any](s []T, f func(T) U) []U {
