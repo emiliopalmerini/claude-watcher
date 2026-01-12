@@ -17,6 +17,8 @@ type Repository interface {
 	GetTopProject(ctx context.Context) (sqlc.GetTopProjectRow, error)
 	GetEfficiencyMetrics(ctx context.Context, days string) (sqlc.GetEfficiencyMetricsRow, error)
 	GetToolsBreakdownAll(ctx context.Context, days string) ([]sql.NullString, error)
+	GetBurnRateMetrics(ctx context.Context) (sqlc.GetBurnRateMetricsRow, error)
+	GetCurrentWindowUsage(ctx context.Context) (sqlc.GetCurrentWindowUsageRow, error)
 }
 
 // SQLCRepository implements Repository using sqlc.Queries.
@@ -55,6 +57,14 @@ func (r *SQLCRepository) GetEfficiencyMetrics(ctx context.Context, days string) 
 
 func (r *SQLCRepository) GetToolsBreakdownAll(ctx context.Context, days string) ([]sql.NullString, error) {
 	return r.queries.GetToolsBreakdownAll(ctx, sql.NullString{String: days, Valid: true})
+}
+
+func (r *SQLCRepository) GetBurnRateMetrics(ctx context.Context) (sqlc.GetBurnRateMetricsRow, error) {
+	return r.queries.GetBurnRateMetrics(ctx)
+}
+
+func (r *SQLCRepository) GetCurrentWindowUsage(ctx context.Context) (sqlc.GetCurrentWindowUsageRow, error) {
+	return r.queries.GetCurrentWindowUsage(ctx)
 }
 
 // TopTool finds the most used tool from a list of tools breakdown rows.

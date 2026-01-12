@@ -11,6 +11,7 @@ import (
 	"claude-watcher/internal/costs"
 	"claude-watcher/internal/dashboard"
 	"claude-watcher/internal/database/sqlc"
+	"claude-watcher/internal/live"
 	"claude-watcher/internal/productivity"
 	"claude-watcher/internal/session_detail"
 	"claude-watcher/internal/sessions"
@@ -49,9 +50,11 @@ func NewHTTPServer(cfg Config, db *sql.DB) *http.Server {
 	apiRepo := api.NewSQLCRepository(queries)
 	productivityRepo := productivity.NewSQLCRepository(queries)
 	costsRepo := costs.NewSQLCRepository(queries)
+	liveRepo := live.NewSQLCRepository(queries)
 
 	// Register routes with handlers
 	dashboard.RegisterRoutes(r, dashboard.NewHandler(dashboardRepo))
+	live.RegisterRoutes(r, live.NewHandler(liveRepo))
 	sessions.RegisterRoutes(r, sessions.NewHandler(sessionsRepo, cfg.DefaultPageSize))
 	session_detail.RegisterRoutes(r, session_detail.NewHandler(sessionDetailRepo))
 	api.RegisterRoutes(r, api.NewHandler(apiRepo, cfg.DefaultRangeHours))
