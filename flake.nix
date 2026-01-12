@@ -25,6 +25,8 @@
               templ generate
             '';
 
+            subPackages = [ "cmd" "cmd/session-tracker" ];
+
             postInstall = ''
               mv $out/bin/cmd $out/bin/claude-watcher
               mkdir -p $out/share/claude-watcher
