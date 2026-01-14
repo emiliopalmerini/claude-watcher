@@ -4,8 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 
 	"claude-watcher/internal/database"
+	"claude-watcher/internal/limits"
+	limitsOutbound "claude-watcher/internal/limits/outbound"
 	"claude-watcher/internal/tracker/adapters/logger"
 	"claude-watcher/internal/tracker/adapters/prompter"
 	"claude-watcher/internal/tracker/adapters/repository"
@@ -37,15 +40,16 @@ func run() error {
 	}
 	log.Debug(fmt.Sprintf("Processing session %s", input.SessionID))
 
-	// 1. Parse transcript (local file, fast)
+	// 1. Parse transcript (local file, fast) - uses Phase 2 parser with limit event extraction
 	parser := transcript.NewParser()
-	stats, err := parser.Parse(input.TranscriptPath)
+	parsed, err := parser.Parse(input.TranscriptPath)
 	if err != nil {
 		log.Error(fmt.Sprintf("Failed to parse transcript: %v", err))
 		return fmt.Errorf("parse transcript: %w", err)
 	}
-	log.Debug(fmt.Sprintf("Parsed stats: prompts=%d, responses=%d, tools=%d",
-		stats.UserPrompts, stats.AssistantResponses, stats.ToolCalls))
+	stats := parsed.Statistics
+	log.Debug(fmt.Sprintf("Parsed stats: prompts=%d, responses=%d, tools=%d, limit_events=%d",
+		stats.UserPrompts, stats.AssistantResponses, stats.ToolCalls, len(parsed.LimitEvents)))
 
 	// 2. Collect quality feedback via TUI (no DB needed - this is the interactive part)
 	bubbleTeaPrompter := prompter.NewBubbleTeaPrompter(log)
@@ -88,6 +92,30 @@ func run() error {
 		}
 	}
 
+	// Record limit events (if any were extracted from transcript)
+	if len(parsed.LimitEvents) > 0 {
+		limitsRepo := limitsOutbound.NewTursoRepository(db)
+		limitsSvc := limits.NewService(limitsRepo, log)
+
+		for _, event := range parsed.LimitEvents {
+			// Only record "hit" events (not resets)
+			if event.EventType != domain.LimitEventHit {
+				continue
+			}
+
+			info := limits.ParsedLimitInfo{
+				LimitType: convertLimitType(event.LimitType),
+				Timestamp: parseTimestamp(event.Timestamp),
+				Message:   event.Message,
+			}
+
+			if err := limitsSvc.RecordLimitHit(info); err != nil {
+				log.Error(fmt.Sprintf("Failed to record limit event: %v", err))
+			}
+		}
+		log.Debug(fmt.Sprintf("Processed %d limit events", len(parsed.LimitEvents)))
+	}
+
 	log.Debug("Session tracking completed successfully")
 	return nil
 }
@@ -125,4 +153,25 @@ func getConfig() (config, error) {
 	}
 
 	return cfg, nil
+}
+
+func convertLimitType(lt domain.LimitType) limits.LimitType {
+	switch lt {
+	case domain.LimitTypeDaily:
+		return limits.LimitTypeDaily
+	case domain.LimitTypeWeekly:
+		return limits.LimitTypeWeekly
+	case domain.LimitTypeMonthly:
+		return limits.LimitTypeMonthly
+	default:
+		return limits.LimitTypeDaily
+	}
+}
+
+func parseTimestamp(ts string) time.Time {
+	t, err := time.Parse(time.RFC3339, ts)
+	if err != nil {
+		return time.Now().UTC()
+	}
+	return t
 }

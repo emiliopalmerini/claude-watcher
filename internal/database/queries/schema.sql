@@ -50,7 +50,7 @@ CREATE TABLE session_tags (
 CREATE TABLE limit_events (
     id INTEGER PRIMARY KEY,
     timestamp TEXT NOT NULL,
-    limit_type TEXT NOT NULL,
+    limit_type TEXT NOT NULL CHECK(limit_type IN ('daily', 'weekly', 'monthly')),
     reset_time TEXT,
     sessions_count INTEGER,
     input_tokens INTEGER,

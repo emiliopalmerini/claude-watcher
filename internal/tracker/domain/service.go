@@ -38,15 +38,16 @@ func NewService(
 func (s *Service) TrackSession(input HookInput, instanceID, hostname string) error {
 	s.logger.Debug(fmt.Sprintf("Processing session %s from %s", input.SessionID, input.TranscriptPath))
 
-	// Parse transcript to extract statistics
-	stats, err := s.parser.Parse(input.TranscriptPath)
+	// Parse transcript to extract statistics and limit events
+	parsed, err := s.parser.Parse(input.TranscriptPath)
 	if err != nil {
 		s.logger.Error(fmt.Sprintf("Failed to parse transcript: %v", err))
 		return fmt.Errorf("parse transcript: %w", err)
 	}
 
-	s.logger.Debug(fmt.Sprintf("Parsed stats: prompts=%d, responses=%d, tools=%d, input_tokens=%d, output_tokens=%d",
-		stats.UserPrompts, stats.AssistantResponses, stats.ToolCalls, stats.InputTokens, stats.OutputTokens))
+	stats := parsed.Statistics
+	s.logger.Debug(fmt.Sprintf("Parsed stats: prompts=%d, responses=%d, tools=%d, input_tokens=%d, output_tokens=%d, limit_events=%d",
+		stats.UserPrompts, stats.AssistantResponses, stats.ToolCalls, stats.InputTokens, stats.OutputTokens, len(parsed.LimitEvents)))
 
 	// Collect quality feedback from user (optional)
 	var qualityData QualityData

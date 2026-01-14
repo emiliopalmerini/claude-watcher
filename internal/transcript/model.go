@@ -80,12 +80,13 @@ const (
 	LimitEventReset LimitEventType = "reset"
 )
 
-// LimitType indicates whether the limit is daily or weekly
+// LimitType indicates the period of the usage limit
 type LimitType string
 
 const (
-	LimitTypeDaily  LimitType = "daily"
-	LimitTypeWeekly LimitType = "weekly"
+	LimitTypeDaily   LimitType = "daily"
+	LimitTypeWeekly  LimitType = "weekly"
+	LimitTypeMonthly LimitType = "monthly"
 )
 
 // RawEntry represents a single line in the JSONL transcript
