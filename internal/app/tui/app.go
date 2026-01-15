@@ -56,6 +56,10 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "q", "ctrl+c":
 			return a, tea.Quit
+		case "tab":
+			return a.nextTab()
+		case "shift+tab":
+			return a.prevTab()
 		case "1":
 			if a.currentScreen != ScreenOverview {
 				a.currentScreen = ScreenOverview
@@ -161,4 +165,34 @@ func (a *App) renderNav() string {
 	}
 	nav := NewNavBar(items)
 	return nav.View()
+}
+
+func (a *App) nextTab() (tea.Model, tea.Cmd) {
+	switch a.currentScreen {
+	case ScreenOverview:
+		a.currentScreen = ScreenSessions
+		return a, a.sessions.Init()
+	case ScreenSessions, ScreenDetail:
+		a.currentScreen = ScreenCosts
+		return a, a.costs.Init()
+	case ScreenCosts:
+		a.currentScreen = ScreenOverview
+		return a, a.overview.Init()
+	}
+	return a, nil
+}
+
+func (a *App) prevTab() (tea.Model, tea.Cmd) {
+	switch a.currentScreen {
+	case ScreenOverview:
+		a.currentScreen = ScreenCosts
+		return a, a.costs.Init()
+	case ScreenSessions, ScreenDetail:
+		a.currentScreen = ScreenOverview
+		return a, a.overview.Init()
+	case ScreenCosts:
+		a.currentScreen = ScreenSessions
+		return a, a.sessions.Init()
+	}
+	return a, nil
 }
