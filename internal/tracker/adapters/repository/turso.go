@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"claude-watcher/internal/pricing"
 	"claude-watcher/internal/tracker/domain"
 	"database/sql"
 	"encoding/json"
@@ -34,7 +35,13 @@ func (r *TursoRepository) Save(session domain.Session) error {
 		return fmt.Errorf("marshal files modified: %w", err)
 	}
 
-	cost := domain.CalculateCost(session.Statistics)
+	cost := pricing.CalculateCost(pricing.TokenUsage{
+		Model:            session.Statistics.Model,
+		InputTokens:      session.Statistics.InputTokens,
+		OutputTokens:     session.Statistics.OutputTokens,
+		CacheReadTokens:  session.Statistics.CacheReadTokens,
+		CacheWriteTokens: session.Statistics.CacheWriteTokens,
+	})
 	duration := session.Statistics.Duration()
 
 	query := `
