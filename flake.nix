@@ -24,12 +24,10 @@
               sqlc generate
             '';
 
-            subPackages = [ "cmd" "cmd/session-tracker" ];
+            subPackages = [ "cmd/dashboard" "cmd/session-tracker" ];
 
             postInstall = ''
-              mv $out/bin/cmd $out/bin/claude-watcher
-              mkdir -p $out/share/claude-watcher
-              cp -r static $out/share/claude-watcher/
+              mv $out/bin/dashboard $out/bin/claude-watcher
             '';
           };
         });

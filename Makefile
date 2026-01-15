@@ -1,4 +1,4 @@
-.PHONY: all fmt vet build run test clean generate sqlc test-prompter dashboard
+.PHONY: all fmt vet build run test clean generate sqlc session-tracker dashboard
 
 all: generate fmt vet test build
 
@@ -13,21 +13,20 @@ vet: fmt
 sqlc:
 	sqlc generate
 
-build: vet sqlc
-	go build -o claude-watcher ./cmd
+build: vet sqlc dashboard session-tracker
 
-run: build
+dashboard:
+	go build -o claude-watcher ./cmd/dashboard
+
+session-tracker:
+	go build -o session-tracker ./cmd/session-tracker
+
+run: dashboard
 	./claude-watcher
 
 test: vet
 	go test -v ./...
 
 clean:
-	rm -f claude-watcher test-prompter dashboard
+	rm -f claude-watcher session-tracker
 	go clean ./...
-
-test-prompter: vet
-	go build -o test-prompter ./cmd/test-prompter && ./test-prompter
-
-dashboard: vet
-	go build -o dashboard ./cmd/dashboard && ./dashboard
