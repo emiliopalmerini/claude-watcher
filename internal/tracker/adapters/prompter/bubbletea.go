@@ -101,7 +101,7 @@ var scaleLabels = map[int]scaleInfo{
 	stepRating:            {"Session Satisfaction", "Poor", "Excellent"},
 }
 
-// Styles inspired by Claude Code
+// Anthropic-inspired retrofuturistic styles
 type styles struct {
 	title       lipgloss.Style
 	subtitle    lipgloss.Style
@@ -119,47 +119,51 @@ type styles struct {
 }
 
 func newStyles() styles {
-	purple := lipgloss.Color("#A855F7")
-	brightPurple := lipgloss.Color("#C084FC")
-	dimGray := lipgloss.Color("#6B7280")
-	lightGray := lipgloss.Color("#9CA3AF")
+	// Anthropic palette
+	white := lipgloss.Color("#FFFFFF")
+	orange := lipgloss.Color("#E07A3D")
+	gray300 := lipgloss.Color("#BDBDBD")
+	gray500 := lipgloss.Color("#757575")
+	gray600 := lipgloss.Color("#616161")
+	gray700 := lipgloss.Color("#424242")
 
 	return styles{
 		title: lipgloss.NewStyle().
 			Bold(true).
-			Foreground(lipgloss.Color("#FFFFFF")).
-			MarginBottom(1),
+			Foreground(orange),
 		subtitle: lipgloss.NewStyle().
-			Foreground(purple).
-			Bold(true).
-			MarginBottom(1),
+			Foreground(white).
+			Bold(true),
 		cursor: lipgloss.NewStyle().
-			Foreground(brightPurple).
+			Foreground(white).
+			Background(orange).
 			Bold(true),
 		selected: lipgloss.NewStyle().
-			Foreground(purple),
+			Foreground(orange).
+			Bold(true),
 		unselected: lipgloss.NewStyle().
-			Foreground(dimGray),
+			Foreground(gray500),
 		help: lipgloss.NewStyle().
-			Foreground(dimGray).
-			MarginTop(1),
+			Foreground(gray500).
+			MarginTop(2),
 		helpKey: lipgloss.NewStyle().
-			Foreground(lightGray).
+			Foreground(gray300).
 			Bold(true),
 		container: lipgloss.NewStyle().
 			Padding(1, 2),
 		indicator: lipgloss.NewStyle().
-			Foreground(brightPurple).
+			Foreground(orange).
 			Bold(true),
 		numberHint: lipgloss.NewStyle().
-			Foreground(dimGray),
+			Foreground(gray600),
 		activeNum: lipgloss.NewStyle().
-			Foreground(brightPurple).
+			Foreground(white).
+			Background(orange).
 			Bold(true),
 		progressBar: lipgloss.NewStyle().
-			Foreground(dimGray),
+			Foreground(gray700),
 		progressDot: lipgloss.NewStyle().
-			Foreground(purple),
+			Foreground(orange),
 	}
 }
 
@@ -482,9 +486,16 @@ func (m model) View() string {
 
 	var b strings.Builder
 
-	b.WriteString(m.styles.title.Render("Session Quality Feedback"))
+	// Header with uppercase title and progress
+	b.WriteString(m.styles.title.Render("SESSION FEEDBACK"))
 	b.WriteString("  ")
 	b.WriteString(m.renderProgress())
+	b.WriteString("\n")
+
+	// Separator line
+	sep := lipgloss.NewStyle().Foreground(lipgloss.Color("#404040")).
+		Render("────────────────────────────────────────")
+	b.WriteString(sep)
 	b.WriteString("\n\n")
 
 	switch m.step {
@@ -506,20 +517,21 @@ func (m model) renderProgress() string {
 	totalSteps := m.countTotalSteps()
 	currentStep := m.countCurrentStep()
 
-	var dots strings.Builder
+	// Clean step counter: [2/6]
+	stepText := fmt.Sprintf("[%d/%d]", currentStep+1, totalSteps)
+	counter := lipgloss.NewStyle().Foreground(lipgloss.Color("#737373")).Render(stepText)
+
+	// Minimalist progress bar
+	var bar strings.Builder
 	for i := 0; i < totalSteps; i++ {
-		if i < currentStep {
-			dots.WriteString(m.styles.progressDot.Render("●"))
-		} else if i == currentStep {
-			dots.WriteString(m.styles.progressDot.Render("◉"))
+		if i <= currentStep {
+			bar.WriteString(m.styles.progressDot.Render("━"))
 		} else {
-			dots.WriteString(m.styles.progressBar.Render("○"))
-		}
-		if i < totalSteps-1 {
-			dots.WriteString(" ")
+			bar.WriteString(m.styles.progressBar.Render("─"))
 		}
 	}
-	return dots.String()
+
+	return counter + " " + bar.String()
 }
 
 func (m model) countTotalSteps() int {
@@ -558,37 +570,32 @@ func (m model) countCurrentStep() int {
 func (m model) viewTags() string {
 	var b strings.Builder
 
-	b.WriteString(m.styles.subtitle.Render("Task Type"))
+	b.WriteString(m.styles.subtitle.Render("TASK TYPE"))
 	b.WriteString("\n\n")
 
 	for i, tag := range m.taskTypeTags {
 		isSelected := m.selectedTags[tag.Name]
 		isCursor := i == m.tagCursor
 
-		var indicator string
-		if isCursor {
-			indicator = m.styles.indicator.Render("❯")
-		} else {
-			indicator = " "
-		}
-
-		var bullet string
+		// Clean checkbox style
+		var checkbox string
 		if isSelected {
-			bullet = m.styles.selected.Render("●")
+			checkbox = m.styles.selected.Render("[x]")
 		} else {
-			bullet = m.styles.unselected.Render("○")
+			checkbox = m.styles.unselected.Render("[ ]")
 		}
 
+		// Tag name with cursor highlight (inverted)
 		var name string
 		if isCursor {
-			name = m.styles.cursor.Render(tag.Name)
+			name = m.styles.cursor.Render(" " + tag.Name + " ")
 		} else if isSelected {
 			name = m.styles.selected.Render(tag.Name)
 		} else {
 			name = m.styles.unselected.Render(tag.Name)
 		}
 
-		b.WriteString(fmt.Sprintf("  %s %s %s\n", indicator, bullet, name))
+		b.WriteString(fmt.Sprintf("  %s %s\n", checkbox, name))
 	}
 
 	return b.String()
@@ -600,47 +607,40 @@ func (m model) viewScale() string {
 	info := scaleLabels[m.step]
 	currentValue := m.getCurrentScaleValue()
 
-	b.WriteString(m.styles.subtitle.Render(info.label))
+	// Uppercase label
+	b.WriteString(m.styles.subtitle.Render(strings.ToUpper(info.label)))
 	b.WriteString("\n\n")
 
-	// Scale labels
+	// Scale description labels - spread evenly
 	b.WriteString("  ")
 	b.WriteString(m.styles.unselected.Render(info.lowDesc))
-	b.WriteString("                    ")
+	// Calculate padding to right-align the high description
+	padding := 35 - len(info.lowDesc) - len(info.highDesc)
+	if padding < 4 {
+		padding = 4
+	}
+	b.WriteString(strings.Repeat(" ", padding))
 	b.WriteString(m.styles.unselected.Render(info.highDesc))
-	b.WriteString("\n")
+	b.WriteString("\n\n")
 
-	// Number row
+	// Number row - clean inverted selection
 	b.WriteString("  ")
 	for i := 1; i <= 5; i++ {
 		isCursor := i == m.scaleCursor
 		isSelected := i == currentValue
-		numStr := fmt.Sprintf("%d", i)
+		numStr := fmt.Sprintf(" %d ", i)
 
 		if isCursor {
-			if isSelected {
-				b.WriteString(m.styles.activeNum.Render("【" + numStr + "】"))
-			} else {
-				b.WriteString(m.styles.activeNum.Render("[ " + numStr + " ]"))
-			}
+			// Inverted: black on white background
+			b.WriteString(m.styles.activeNum.Render(numStr))
 		} else if isSelected {
-			b.WriteString(m.styles.selected.Render("  " + numStr + "  "))
+			// Selected but not cursor: bold white
+			b.WriteString(m.styles.selected.Render(numStr))
 		} else {
-			b.WriteString(m.styles.numberHint.Render("  " + numStr + "  "))
+			// Unselected: dim
+			b.WriteString(m.styles.numberHint.Render(numStr))
 		}
-		b.WriteString(" ")
-	}
-	b.WriteString("\n")
-
-	// Cursor indicator row
-	b.WriteString("  ")
-	for i := 1; i <= 5; i++ {
-		if i == m.scaleCursor {
-			b.WriteString(m.styles.indicator.Render("  ▲  "))
-		} else {
-			b.WriteString("      ")
-		}
-		b.WriteString(" ")
+		b.WriteString("  ")
 	}
 	b.WriteString("\n")
 
@@ -650,15 +650,16 @@ func (m model) viewScale() string {
 func (m model) viewNotes() string {
 	var b strings.Builder
 
-	b.WriteString(m.styles.subtitle.Render("Notes (optional)"))
+	b.WriteString(m.styles.subtitle.Render("NOTES"))
+	b.WriteString("  ")
+	b.WriteString(m.styles.unselected.Render("optional"))
 
-	// Vim mode indicator
+	// Vim mode indicator - clean style
+	b.WriteString("  ")
 	if m.vimMode == modeInsert {
-		b.WriteString("  ")
-		b.WriteString(m.styles.activeNum.Render("-- INSERT --"))
+		b.WriteString(m.styles.activeNum.Render(" INSERT "))
 	} else {
-		b.WriteString("  ")
-		b.WriteString(m.styles.unselected.Render("-- NORMAL --"))
+		b.WriteString(m.styles.unselected.Render("[NORMAL]"))
 	}
 	b.WriteString("\n\n")
 
@@ -709,14 +710,16 @@ func (m model) getKeyBindings() []keyBinding {
 func (m model) renderHelp() string {
 	bindings := m.getKeyBindings()
 
-	keyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#9CA3AF")).Bold(true)
-	descStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#6B7280"))
+	// Monochrome help style
+	keyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#A3A3A3")).Bold(true)
+	descStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#525252"))
+	sepStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#404040"))
 
 	var parts []string
 	for _, kb := range bindings {
 		parts = append(parts, keyStyle.Render(kb.key)+descStyle.Render(":"+kb.desc))
 	}
-	return strings.Join(parts, " ")
+	return strings.Join(parts, sepStyle.Render("  /  "))
 }
 
 func (m model) toQualityData() domain.QualityData {
