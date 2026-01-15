@@ -101,7 +101,7 @@ var scaleLabels = map[int]scaleInfo{
 	stepRating:            {"Session Satisfaction", "Poor", "Excellent"},
 }
 
-// Anthropic-inspired retrofuturistic styles
+// Monochrome grayscale styles with strong text hierarchy
 type styles struct {
 	title       lipgloss.Style
 	subtitle    lipgloss.Style
@@ -119,51 +119,52 @@ type styles struct {
 }
 
 func newStyles() styles {
-	// Anthropic palette
+	// Grayscale palette
 	white := lipgloss.Color("#FFFFFF")
-	orange := lipgloss.Color("#E07A3D")
-	gray300 := lipgloss.Color("#BDBDBD")
-	gray500 := lipgloss.Color("#757575")
-	gray600 := lipgloss.Color("#616161")
-	gray700 := lipgloss.Color("#424242")
+	black := lipgloss.Color("#000000")
+	gray300 := lipgloss.Color("#E0E0E0")
+	gray500 := lipgloss.Color("#9E9E9E")
+	gray600 := lipgloss.Color("#757575")
+	gray700 := lipgloss.Color("#616161")
+	gray800 := lipgloss.Color("#424242")
 
 	return styles{
 		title: lipgloss.NewStyle().
 			Bold(true).
-			Foreground(orange),
+			Foreground(white),
 		subtitle: lipgloss.NewStyle().
-			Foreground(white).
+			Foreground(gray300).
 			Bold(true),
 		cursor: lipgloss.NewStyle().
-			Foreground(white).
-			Background(orange).
+			Foreground(black).
+			Background(white).
 			Bold(true),
 		selected: lipgloss.NewStyle().
-			Foreground(orange).
+			Foreground(white).
 			Bold(true),
 		unselected: lipgloss.NewStyle().
-			Foreground(gray500),
+			Foreground(gray600),
 		help: lipgloss.NewStyle().
-			Foreground(gray500).
+			Foreground(gray700).
 			MarginTop(2),
 		helpKey: lipgloss.NewStyle().
-			Foreground(gray300).
+			Foreground(gray500).
 			Bold(true),
 		container: lipgloss.NewStyle().
 			Padding(1, 2),
 		indicator: lipgloss.NewStyle().
-			Foreground(orange).
+			Foreground(white).
 			Bold(true),
 		numberHint: lipgloss.NewStyle().
-			Foreground(gray600),
+			Foreground(gray700),
 		activeNum: lipgloss.NewStyle().
-			Foreground(white).
-			Background(orange).
+			Foreground(black).
+			Background(white).
 			Bold(true),
 		progressBar: lipgloss.NewStyle().
-			Foreground(gray700),
+			Foreground(gray800),
 		progressDot: lipgloss.NewStyle().
-			Foreground(orange),
+			Foreground(white),
 	}
 }
 

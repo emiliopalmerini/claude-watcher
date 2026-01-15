@@ -29,32 +29,32 @@ func NewNavBar(items []NavItem) *NavBar {
 	}
 }
 
-// View renders the navigation bar as NASA-style tabs
+// View renders the navigation bar as grayscale tabs
 func (n NavBar) View() string {
 	var items []string
 
 	for _, item := range n.Items {
 		var rendered string
 		if item.Active {
-			// Active: white on NASA red
+			// Active: inverted (black on white)
 			rendered = n.styles.Active.Render(item.Label)
 		} else {
-			// Inactive: clean key hint
+			// Inactive: muted with key hint
 			key := lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#757575")).
+				Foreground(lipgloss.Color("#616161")).
 				Render("[" + item.Key + "]")
 			label := lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#9E9E9E")).
+				Foreground(lipgloss.Color("#757575")).
 				Render(item.Label)
 			rendered = key + " " + label
 		}
 		items = append(items, rendered)
 	}
 
-	// Clean separator
+	// Subtle separator
 	sep := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#424242")).
-		Render("  │  ")
+		Render("  /  ")
 
 	return strings.Join(items, sep)
 }

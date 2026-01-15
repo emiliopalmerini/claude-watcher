@@ -115,10 +115,10 @@ func (a *App) View() string {
 	header := a.renderHeader()
 	nav := a.renderNav()
 
-	// Anthropic orange separator
+	// Grayscale separator
 	sep := lipgloss.NewStyle().
-		Foreground(theme.Orange).
-		Render("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+		Foreground(theme.Gray700).
+		Render("────────────────────────────────────────────────────────────────")
 
 	var content string
 	switch a.currentScreen {
@@ -138,23 +138,18 @@ func (a *App) View() string {
 }
 
 func (a *App) renderHeader() string {
-	// Anthropic-style bold title
+	// Bold white title - primary hierarchy
 	title := lipgloss.NewStyle().
 		Bold(true).
-		Foreground(theme.Orange).
-		Render("CLAUDE")
-
-	watcher := lipgloss.NewStyle().
-		Bold(true).
 		Foreground(theme.White).
-		Render("WATCHER")
+		Render("CLAUDE WATCHER")
 
-	// Clean tagline
+	// Muted tagline - secondary hierarchy
 	tagline := lipgloss.NewStyle().
-		Foreground(theme.Gray500).
-		Render("// SESSION ANALYTICS")
+		Foreground(theme.Gray600).
+		Render("session analytics")
 
-	return lipgloss.JoinHorizontal(lipgloss.Bottom, title, watcher, "  ", tagline)
+	return lipgloss.JoinHorizontal(lipgloss.Bottom, title, "  ", tagline)
 }
 
 func (a *App) renderNav() string {

@@ -2,39 +2,38 @@ package theme
 
 import "github.com/charmbracelet/lipgloss"
 
-// Anthropic-inspired retrofuturistic color palette
-// Bold, systematic design language
+// Monochrome grayscale palette
+// High contrast typography-focused hierarchy
 var (
-	// Primary - High contrast foundation
+	// Primary - Maximum contrast
 	White = lipgloss.Color("#FFFFFF")
 	Black = lipgloss.Color("#000000")
 
-	// Anthropic Orange - Brand accent color
-	Orange = lipgloss.Color("#E07A3D")
+	// Gray scale - carefully tuned for text hierarchy
+	Gray50  = lipgloss.Color("#FAFAFA") // Near white
+	Gray100 = lipgloss.Color("#F5F5F5") // Backgrounds
+	Gray200 = lipgloss.Color("#EEEEEE") // Subtle borders
+	Gray300 = lipgloss.Color("#E0E0E0") // Disabled
+	Gray400 = lipgloss.Color("#BDBDBD") // Tertiary text
+	Gray500 = lipgloss.Color("#9E9E9E") // Secondary text
+	Gray600 = lipgloss.Color("#757575") // Body text
+	Gray700 = lipgloss.Color("#616161") // Strong secondary
+	Gray800 = lipgloss.Color("#424242") // Borders on dark
+	Gray900 = lipgloss.Color("#212121") // Near black
 
-	// Gray scale - systematic hierarchy
-	Gray100 = lipgloss.Color("#F5F5F5")
-	Gray200 = lipgloss.Color("#E0E0E0")
-	Gray300 = lipgloss.Color("#BDBDBD")
-	Gray400 = lipgloss.Color("#9E9E9E")
-	Gray500 = lipgloss.Color("#757575")
-	Gray600 = lipgloss.Color("#616161")
-	Gray700 = lipgloss.Color("#424242")
-	Gray800 = lipgloss.Color("#212121")
-	Gray900 = lipgloss.Color("#121212")
-
-	// Semantic colors
-	Success = lipgloss.Color("#4CAF50")
-	Warning = Orange
-	Error   = Orange
-	Info    = lipgloss.Color("#FFFFFF")
+	// Semantic - grayscale only
+	Success = Gray600
+	Warning = Gray500
+	Error   = White
+	Info    = Gray500
 
 	// Aliases
 	LightGray    = Gray400
-	DimGray      = Gray500
-	DarkGray     = Gray700
-	Accent       = Orange
+	DimGray      = Gray600
+	DarkGray     = Gray800
+	Accent       = White
 	AccentBg     = Gray900
-	BrightPurple = Orange
-	NASARed      = Orange // Legacy alias
+	BrightPurple = White
+	Orange       = White // Legacy
+	NASARed      = White // Legacy
 )

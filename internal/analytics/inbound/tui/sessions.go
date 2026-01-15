@@ -190,14 +190,14 @@ func (s *Sessions) renderRow(session analytics.SessionSummary, selected bool) st
 
 	var style lipgloss.Style
 	if selected {
-		// Anthropic orange selection
+		// Inverted selection (black on white)
 		style = lipgloss.NewStyle().
-			Foreground(theme.White).
-			Background(theme.Orange).
+			Foreground(theme.Black).
+			Background(theme.White).
 			Bold(true)
 	} else {
 		style = lipgloss.NewStyle().
-			Foreground(theme.Gray300)
+			Foreground(theme.Gray500)
 	}
 
 	cols := []string{
