@@ -18,11 +18,10 @@
             vendorHash = "sha256-gODQwQB52Qes2zmjWHZoX+SCF9or4cE3S/MKdKD3RIg=";
             proxyVendor = true;
 
-            nativeBuildInputs = [ pkgs.templ pkgs.sqlc ];
+            nativeBuildInputs = [ pkgs.sqlc ];
 
             preBuild = ''
               sqlc generate
-              templ generate
             '';
 
             subPackages = [ "cmd" "cmd/session-tracker" ];
@@ -39,7 +38,7 @@
         let pkgs = nixpkgs.legacyPackages.${system};
         in {
           default = pkgs.mkShell {
-            packages = [ pkgs.go_1_25 pkgs.templ pkgs.sqlc ];
+            packages = [ pkgs.go_1_25 pkgs.sqlc ];
           };
         });
     };

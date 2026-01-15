@@ -1,8 +1,8 @@
-.PHONY: all fmt vet build run test clean generate sqlc templ test-prompter dashboard
+.PHONY: all fmt vet build run test clean generate sqlc test-prompter dashboard
 
 all: generate fmt vet test build
 
-generate: sqlc templ
+generate: sqlc
 
 fmt:
 	go fmt ./...
@@ -13,10 +13,7 @@ vet: fmt
 sqlc:
 	sqlc generate
 
-templ:
-	templ generate
-
-build: vet sqlc templ
+build: vet sqlc
 	go build -o claude-watcher ./cmd
 
 run: build
