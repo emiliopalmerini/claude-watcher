@@ -1,0 +1,15 @@
+package analytics
+
+import "context"
+
+// Repository defines the interface for analytics data access
+type Repository interface {
+	// GetOverviewMetrics retrieves aggregate metrics for the dashboard overview
+	GetOverviewMetrics(ctx context.Context) (OverviewMetrics, error)
+}
+
+// Logger defines the interface for logging
+type Logger interface {
+	Debug(msg string)
+	Error(msg string)
+}

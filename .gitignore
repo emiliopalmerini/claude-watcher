@@ -9,6 +9,7 @@
 *.dylib
 /claude-watcher
 /test-prompter
+/dashboard
 
 # Test binary, built with `go test -c`
 *.test
