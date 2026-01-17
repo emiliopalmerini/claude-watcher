@@ -1,0 +1,116 @@
+package templates
+
+templ Layout(title string) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<title>{ title } - Claude Watcher</title>
+			<script src="/static/js/htmx.min.js"></script>
+			<script src="/static/js/alpine.min.js" defer></script>
+			<script src="/static/js/echarts.min.js"></script>
+			<link rel="stylesheet" href="/static/css/style.css"/>
+		</head>
+		<body class="bg-gray-50 min-h-screen">
+			<nav class="bg-white shadow-sm border-b">
+				<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+					<div class="flex justify-between h-16">
+						<div class="flex">
+							<div class="flex-shrink-0 flex items-center">
+								<span class="text-xl font-bold text-gray-900">Claude Watcher</span>
+							</div>
+							<div class="hidden sm:ml-6 sm:flex sm:space-x-8">
+								<a href="/" class="nav-link">Dashboard</a>
+								<a href="/sessions" class="nav-link">Sessions</a>
+								<a href="/experiments" class="nav-link">Experiments</a>
+								<a href="/settings" class="nav-link">Settings</a>
+							</div>
+						</div>
+					</div>
+				</div>
+			</nav>
+			<main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+				{ children... }
+			</main>
+			<script>
+				function usageChart() {
+					return {
+						chart: null,
+						init() {
+							this.chart = echarts.init(document.getElementById('usage-chart'));
+							this.fetchData();
+							window.addEventListener('resize', () => this.chart.resize());
+						},
+						async fetchData() {
+							try {
+								const [tokensRes, costRes] = await Promise.all([
+									fetch('/api/charts/tokens'),
+									fetch('/api/charts/cost')
+								]);
+								const tokensData = await tokensRes.json();
+								const costData = await costRes.json();
+								this.renderChart(tokensData, costData);
+							} catch (e) {
+								console.error('Failed to fetch chart data:', e);
+							}
+						},
+						renderChart(tokensData, costData) {
+							const option = {
+								tooltip: {
+									trigger: 'axis',
+									axisPointer: { type: 'shadow' }
+								},
+								legend: {
+									data: ['Tokens', 'Cost ($)']
+								},
+								grid: {
+									left: '3%',
+									right: '4%',
+									bottom: '3%',
+									containLabel: true
+								},
+								xAxis: {
+									type: 'category',
+									data: tokensData.labels || [],
+									axisLabel: { rotate: 45 }
+								},
+								yAxis: [
+									{
+										type: 'value',
+										name: 'Tokens',
+										position: 'left',
+										axisLabel: { formatter: val => val >= 1000 ? (val/1000)+'k' : val }
+									},
+									{
+										type: 'value',
+										name: 'Cost ($)',
+										position: 'right',
+										axisLabel: { formatter: '${value}' }
+									}
+								],
+								series: [
+									{
+										name: 'Tokens',
+										type: 'bar',
+										data: tokensData.tokens || [],
+										itemStyle: { color: '#3b82f6' }
+									},
+									{
+										name: 'Cost ($)',
+										type: 'line',
+										yAxisIndex: 1,
+										data: costData.costs || [],
+										itemStyle: { color: '#10b981' },
+										smooth: true
+									}
+								]
+							};
+							this.chart.setOption(option);
+						}
+					};
+				}
+			</script>
+		</body>
+	</html>
+}

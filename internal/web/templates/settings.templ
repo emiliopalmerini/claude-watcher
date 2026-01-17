@@ -1,0 +1,66 @@
+package templates
+
+import "fmt"
+
+templ Settings(pricing []ModelPricing) {
+	@Layout("Settings") {
+		<div class="space-y-6">
+			<h1 class="text-2xl font-bold text-gray-900">Settings</h1>
+
+			<div class="card">
+				<h2 class="text-lg font-semibold mb-4">Model Pricing</h2>
+				<p class="text-gray-600 text-sm mb-4">Configure pricing for cost estimation (USD per 1M tokens)</p>
+
+				<table class="min-w-full divide-y divide-gray-200">
+					<thead class="bg-gray-50">
+						<tr>
+							<th class="table-header">Model</th>
+							<th class="table-header">Input</th>
+							<th class="table-header">Output</th>
+							<th class="table-header">Cache Read</th>
+							<th class="table-header">Cache Write</th>
+							<th class="table-header">Default</th>
+						</tr>
+					</thead>
+					<tbody class="bg-white divide-y divide-gray-200">
+						for _, p := range pricing {
+							<tr>
+								<td class="table-cell">
+									<div class="font-medium">{ p.DisplayName }</div>
+									<div class="text-xs text-gray-500 font-mono">{ p.ID }</div>
+								</td>
+								<td class="table-cell">{ fmt.Sprintf("$%.2f", p.InputPerMillion) }</td>
+								<td class="table-cell">{ fmt.Sprintf("$%.2f", p.OutputPerMillion) }</td>
+								<td class="table-cell">
+									if p.CacheReadPerMillion > 0 {
+										{ fmt.Sprintf("$%.2f", p.CacheReadPerMillion) }
+									} else {
+										<span class="text-gray-400">-</span>
+									}
+								</td>
+								<td class="table-cell">
+									if p.CacheWritePerMillion > 0 {
+										{ fmt.Sprintf("$%.2f", p.CacheWritePerMillion) }
+									} else {
+										<span class="text-gray-400">-</span>
+									}
+								</td>
+								<td class="table-cell">
+									if p.IsDefault {
+										<span class="badge badge-green">Default</span>
+									}
+								</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+				if len(pricing) == 0 {
+					<div class="p-8 text-center text-gray-500">No pricing configured</div>
+				}
+				<p class="text-gray-500 text-sm mt-4">
+					Use CLI to manage: <code class="bg-gray-100 px-1 rounded">claude-watcher cost set &lt;model-id&gt; --input X --output Y</code>
+				</p>
+			</div>
+		</div>
+	}
+}

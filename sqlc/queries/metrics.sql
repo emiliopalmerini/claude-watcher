@@ -90,3 +90,16 @@ WHERE s.created_at >= ?
 GROUP BY tool_name
 ORDER BY total_invocations DESC
 LIMIT ?;
+
+-- name: GetDailyStats :many
+SELECT
+    DATE(s.created_at) as date,
+    COUNT(DISTINCT s.id) as session_count,
+    COALESCE(SUM(m.token_input + m.token_output), 0) as total_tokens,
+    COALESCE(SUM(m.cost_estimate_usd), 0) as total_cost
+FROM sessions s
+LEFT JOIN session_metrics m ON s.id = m.session_id
+WHERE s.created_at >= ?
+GROUP BY DATE(s.created_at)
+ORDER BY date ASC
+LIMIT ?;

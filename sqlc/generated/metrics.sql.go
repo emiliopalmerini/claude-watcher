@@ -271,6 +271,60 @@ func (q *Queries) GetAggregateStatsByProject(ctx context.Context, arg GetAggrega
 	return i, err
 }
 
+const getDailyStats = `-- name: GetDailyStats :many
+SELECT
+    DATE(s.created_at) as date,
+    COUNT(DISTINCT s.id) as session_count,
+    COALESCE(SUM(m.token_input + m.token_output), 0) as total_tokens,
+    COALESCE(SUM(m.cost_estimate_usd), 0) as total_cost
+FROM sessions s
+LEFT JOIN session_metrics m ON s.id = m.session_id
+WHERE s.created_at >= ?
+GROUP BY DATE(s.created_at)
+ORDER BY date ASC
+LIMIT ?
+`
+
+type GetDailyStatsParams struct {
+	CreatedAt string `json:"created_at"`
+	Limit     int64  `json:"limit"`
+}
+
+type GetDailyStatsRow struct {
+	Date         interface{} `json:"date"`
+	SessionCount int64       `json:"session_count"`
+	TotalTokens  interface{} `json:"total_tokens"`
+	TotalCost    interface{} `json:"total_cost"`
+}
+
+func (q *Queries) GetDailyStats(ctx context.Context, arg GetDailyStatsParams) ([]GetDailyStatsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getDailyStats, arg.CreatedAt, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetDailyStatsRow{}
+	for rows.Next() {
+		var i GetDailyStatsRow
+		if err := rows.Scan(
+			&i.Date,
+			&i.SessionCount,
+			&i.TotalTokens,
+			&i.TotalCost,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getSessionMetricsBySessionID = `-- name: GetSessionMetricsBySessionID :one
 SELECT session_id, message_count_user, message_count_assistant, turn_count, token_input, token_output, token_cache_read, token_cache_write, cost_estimate_usd, error_count FROM session_metrics WHERE session_id = ?
 `

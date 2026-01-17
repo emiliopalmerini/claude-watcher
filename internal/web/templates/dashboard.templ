@@ -1,0 +1,80 @@
+package templates
+
+import "fmt"
+
+templ Dashboard(stats DashboardStats) {
+	@Layout("Dashboard") {
+		<div class="space-y-6">
+			<div class="flex items-center justify-between">
+				<h1 class="text-2xl font-bold text-gray-900">Dashboard</h1>
+				if stats.ActiveExperiment != "" {
+					<span class="badge badge-green">Experiment: { stats.ActiveExperiment }</span>
+				}
+			</div>
+
+			<!-- Stats Cards -->
+			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+				@StatCard("Sessions", fmt.Sprintf("%d", stats.SessionCount), "Total sessions recorded")
+				@StatCard("Tokens", formatTokens(stats.TotalTokens), fmt.Sprintf("%s in / %s out", formatTokens(stats.TokenInput), formatTokens(stats.TokenOutput)))
+				@StatCard("Cost", fmt.Sprintf("$%.4f", stats.TotalCost), "Estimated total cost")
+				@StatCard("Turns", fmt.Sprintf("%d", stats.TotalTurns), "Total conversation turns")
+			</div>
+
+			<!-- Usage Chart -->
+			<div class="card" x-data="usageChart()" x-init="init()">
+				<h2 class="text-lg font-semibold mb-4">Daily Usage (Last 30 Days)</h2>
+				<div id="usage-chart" style="height: 300px;"></div>
+			</div>
+
+			<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+				<!-- Top Tools -->
+				<div class="card">
+					<h2 class="text-lg font-semibold mb-4">Top Tools</h2>
+					if len(stats.TopTools) > 0 {
+						<div class="space-y-2">
+							for _, tool := range stats.TopTools {
+								<div class="flex justify-between items-center py-2 border-b last:border-0">
+									<span class="font-mono text-sm">{ tool.Name }</span>
+									<span class="text-gray-600">{ fmt.Sprintf("%d", tool.Count) } calls</span>
+								</div>
+							}
+						</div>
+					} else {
+						<p class="text-gray-500">No tool usage recorded yet</p>
+					}
+				</div>
+
+				<!-- Recent Sessions -->
+				<div class="card">
+					<h2 class="text-lg font-semibold mb-4">Recent Sessions</h2>
+					if len(stats.RecentSessions) > 0 {
+						<div class="space-y-2">
+							for _, session := range stats.RecentSessions {
+								<a href={ templ.SafeURL("/sessions/" + session.ID) } class="block hover:bg-gray-50 -mx-2 px-2 py-2 rounded">
+									<div class="flex justify-between items-center">
+										<span class="font-mono text-sm text-gray-600">{ truncateID(session.ID) }</span>
+										<span class="text-sm text-gray-500">{ formatDateTime(session.CreatedAt) }</span>
+									</div>
+									<div class="flex justify-between items-center text-sm mt-1">
+										<span>{ fmt.Sprintf("%d turns", session.Turns) } · { formatTokens(session.Tokens) } tokens</span>
+										<span class="text-green-600">{ fmt.Sprintf("$%.4f", session.Cost) }</span>
+									</div>
+								</a>
+							}
+						</div>
+					} else {
+						<p class="text-gray-500">No sessions recorded yet</p>
+					}
+				</div>
+			</div>
+		</div>
+	}
+}
+
+templ StatCard(title, value, subtitle string) {
+	<div class="card">
+		<dt class="text-sm font-medium text-gray-500 truncate">{ title }</dt>
+		<dd class="mt-1 text-3xl font-semibold text-gray-900">{ value }</dd>
+		<dd class="mt-1 text-sm text-gray-500">{ subtitle }</dd>
+	</div>
+}
