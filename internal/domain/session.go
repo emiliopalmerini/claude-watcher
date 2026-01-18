@@ -18,16 +18,16 @@ type Session struct {
 }
 
 type SessionMetrics struct {
-	SessionID       string
-	MessageCountUser     int64
+	SessionID             string
+	MessageCountUser      int64
 	MessageCountAssistant int64
-	TurnCount       int64
-	TokenInput      int64
-	TokenOutput     int64
-	TokenCacheRead  int64
-	TokenCacheWrite int64
-	CostEstimateUSD *float64
-	ErrorCount      int64
+	TurnCount             int64
+	TokenInput            int64
+	TokenOutput           int64
+	TokenCacheRead        int64
+	TokenCacheWrite       int64
+	CostEstimateUSD       *float64
+	ErrorCount            int64
 }
 
 type SessionTool struct {

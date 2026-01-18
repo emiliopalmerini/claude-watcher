@@ -126,16 +126,16 @@ func runRecord(cmd *cobra.Command, args []string) error {
 
 	// Build session
 	session := &domain.Session{
-		ID:             hookInput.SessionID,
-		ProjectID:      project.ID,
-		TranscriptPath: hookInput.TranscriptPath,
-		Cwd:            hookInput.Cwd,
-		PermissionMode: hookInput.PermissionMode,
-		ExitReason:     hookInput.Reason,
-		StartedAt:      parsed.StartedAt,
-		EndedAt:        parsed.EndedAt,
+		ID:              hookInput.SessionID,
+		ProjectID:       project.ID,
+		TranscriptPath:  hookInput.TranscriptPath,
+		Cwd:             hookInput.Cwd,
+		PermissionMode:  hookInput.PermissionMode,
+		ExitReason:      hookInput.Reason,
+		StartedAt:       parsed.StartedAt,
+		EndedAt:         parsed.EndedAt,
 		DurationSeconds: durationSeconds,
-		CreatedAt:      time.Now().UTC(),
+		CreatedAt:       time.Now().UTC(),
 	}
 
 	if storedPath != "" {

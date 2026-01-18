@@ -69,11 +69,52 @@ var experimentDeleteCmd = &cobra.Command{
 	RunE:  runExperimentDelete,
 }
 
+var experimentStatsCmd = &cobra.Command{
+	Use:   "stats <name>",
+	Short: "Show statistics for an experiment",
+	Long: `Show detailed statistics for a specific experiment.
+
+Examples:
+  claude-watcher experiment stats "baseline"`,
+	Args: cobra.ExactArgs(1),
+	RunE: runExperimentStats,
+}
+
+var experimentCompareCmd = &cobra.Command{
+	Use:   "compare <exp1> <exp2> [exp3...]",
+	Short: "Compare statistics between experiments",
+	Long: `Compare statistics side-by-side between two or more experiments.
+
+Examples:
+  claude-watcher experiment compare "baseline" "minimal-prompts"
+  claude-watcher experiment compare "exp1" "exp2" "exp3"`,
+	Args: cobra.MinimumNArgs(2),
+	RunE: runExperimentCompare,
+}
+
 // Flags
 var (
 	expDescription string
 	expHypothesis  string
 )
+
+// expData holds aggregated stats for an experiment (used in compare)
+type expData struct {
+	name         string
+	sessions     int64
+	turns        int64
+	userMsgs     int64
+	assistMsgs   int64
+	tokenInput   int64
+	tokenOutput  int64
+	cacheRead    int64
+	cacheWrite   int64
+	cost         float64
+	errors       int64
+	totalTokens  int64
+	tokensPerSes int64
+	costPerSes   float64
+}
 
 func init() {
 	rootCmd.AddCommand(experimentCmd)
@@ -84,6 +125,8 @@ func init() {
 	experimentCmd.AddCommand(experimentDeactivateCmd)
 	experimentCmd.AddCommand(experimentEndCmd)
 	experimentCmd.AddCommand(experimentDeleteCmd)
+	experimentCmd.AddCommand(experimentStatsCmd)
+	experimentCmd.AddCommand(experimentCompareCmd)
 
 	// Flags for create command
 	experimentCreateCmd.Flags().StringVarP(&expDescription, "description", "d", "", "Description of the experiment")
@@ -144,19 +187,32 @@ func runExperimentList(cmd *cobra.Command, args []string) error {
 
 	queries := sqlc.New(db)
 
+	// Get experiments with stats
+	expStats, err := queries.GetStatsForAllExperiments(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to list experiments: %w", err)
+	}
+
+	if len(expStats) == 0 {
+		fmt.Println("No experiments found")
+		return nil
+	}
+
+	// Build a map of experiment stats for quick lookup
+	statsMap := make(map[string]sqlc.GetStatsForAllExperimentsRow)
+	for _, es := range expStats {
+		statsMap[es.ExperimentID] = es
+	}
+
+	// Get full experiment details
 	experiments, err := queries.ListExperiments(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to list experiments: %w", err)
 	}
 
-	if len(experiments) == 0 {
-		fmt.Println("No experiments found")
-		return nil
-	}
-
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "NAME\tSTATUS\tSTARTED\tENDED\tDESCRIPTION")
-	fmt.Fprintln(w, "----\t------\t-------\t-----\t-----------")
+	fmt.Fprintln(w, "NAME\tSTATUS\tSESSIONS\tTOKENS\tCOST\tSTARTED\tENDED")
+	fmt.Fprintln(w, "----\t------\t--------\t------\t----\t-------\t-----")
 
 	for _, exp := range experiments {
 		status := "inactive"
@@ -172,12 +228,18 @@ func runExperimentList(cmd *cobra.Command, args []string) error {
 			ended = formatDate(exp.EndedAt.String)
 		}
 
-		desc := "-"
-		if exp.Description.Valid && exp.Description.String != "" {
-			desc = truncate(exp.Description.String, 40)
+		// Get stats for this experiment
+		sessions := int64(0)
+		tokens := int64(0)
+		cost := 0.0
+		if es, ok := statsMap[exp.ID]; ok {
+			sessions = es.SessionCount
+			tokens = toInt64(es.TotalTokenInput) + toInt64(es.TotalTokenOutput)
+			cost = toFloat64(es.TotalCostUsd)
 		}
 
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", exp.Name, status, started, ended, desc)
+		fmt.Fprintf(w, "%s\t%s\t%d\t%s\t$%.2f\t%s\t%s\n",
+			exp.Name, status, sessions, formatNumber(tokens), cost, started, ended)
 	}
 
 	w.Flush()
@@ -348,4 +410,223 @@ func truncate(s string, maxLen int) string {
 		return s
 	}
 	return s[:maxLen-3] + "..."
+}
+
+func runExperimentStats(cmd *cobra.Command, args []string) error {
+	ctx := context.Background()
+	name := args[0]
+
+	db, err := turso.NewDB()
+	if err != nil {
+		return fmt.Errorf("failed to connect to database: %w", err)
+	}
+	defer db.Close()
+
+	queries := sqlc.New(db)
+
+	// Get experiment by name
+	exp, err := queries.GetExperimentByName(ctx, name)
+	if err != nil {
+		return fmt.Errorf("experiment %q not found", name)
+	}
+
+	// Get stats for this experiment
+	row, err := queries.GetAggregateStatsByExperiment(ctx, sqlc.GetAggregateStatsByExperimentParams{
+		ExperimentID: toNullString(exp.ID),
+		CreatedAt:    "1970-01-01T00:00:00Z", // All time
+	})
+	if err != nil {
+		return fmt.Errorf("failed to get stats: %w", err)
+	}
+
+	// Print experiment details
+	fmt.Println()
+	fmt.Printf("  Experiment: %s\n", exp.Name)
+	fmt.Printf("  ==============%s\n", repeatChar('=', len(exp.Name)))
+	fmt.Println()
+
+	if exp.Description.Valid && exp.Description.String != "" {
+		fmt.Printf("  Description:  %s\n", exp.Description.String)
+	}
+	if exp.Hypothesis.Valid && exp.Hypothesis.String != "" {
+		fmt.Printf("  Hypothesis:   %s\n", exp.Hypothesis.String)
+	}
+
+	status := "inactive"
+	if exp.IsActive == 1 {
+		status = "ACTIVE"
+	} else if exp.EndedAt.Valid {
+		status = "ended"
+	}
+	fmt.Printf("  Status:       %s\n", status)
+	fmt.Printf("  Started:      %s\n", formatDate(exp.StartedAt))
+	if exp.EndedAt.Valid {
+		fmt.Printf("  Ended:        %s\n", formatDate(exp.EndedAt.String))
+	}
+	fmt.Println()
+
+	// Print stats
+	fmt.Printf("  Sessions\n")
+	fmt.Printf("  --------\n")
+	fmt.Printf("  Total:             %d\n", row.SessionCount)
+	fmt.Printf("  Turns:             %s\n", formatNumber(toInt64(row.TotalTurns)))
+	fmt.Printf("  User messages:     %s\n", formatNumber(toInt64(row.TotalUserMessages)))
+	fmt.Printf("  Assistant msgs:    %s\n", formatNumber(toInt64(row.TotalAssistantMessages)))
+	fmt.Printf("  Errors:            %d\n", toInt64(row.TotalErrors))
+	fmt.Println()
+
+	fmt.Printf("  Tokens\n")
+	fmt.Printf("  ------\n")
+	fmt.Printf("  Input:             %s\n", formatNumber(toInt64(row.TotalTokenInput)))
+	fmt.Printf("  Output:            %s\n", formatNumber(toInt64(row.TotalTokenOutput)))
+	fmt.Printf("  Cache read:        %s\n", formatNumber(toInt64(row.TotalTokenCacheRead)))
+	fmt.Printf("  Cache write:       %s\n", formatNumber(toInt64(row.TotalTokenCacheWrite)))
+	totalTokens := toInt64(row.TotalTokenInput) + toInt64(row.TotalTokenOutput)
+	fmt.Printf("  Total:             %s\n", formatNumber(totalTokens))
+	fmt.Println()
+
+	fmt.Printf("  Cost\n")
+	fmt.Printf("  ----\n")
+	fmt.Printf("  Estimated:         $%.4f\n", toFloat64(row.TotalCostUsd))
+	fmt.Println()
+
+	// Efficiency metrics
+	if row.SessionCount > 0 {
+		fmt.Printf("  Efficiency\n")
+		fmt.Printf("  ----------\n")
+		fmt.Printf("  Tokens/session:    %s\n", formatNumber(totalTokens/row.SessionCount))
+		fmt.Printf("  Cost/session:      $%.4f\n", toFloat64(row.TotalCostUsd)/float64(row.SessionCount))
+		fmt.Println()
+	}
+
+	return nil
+}
+
+func runExperimentCompare(cmd *cobra.Command, args []string) error {
+	ctx := context.Background()
+
+	db, err := turso.NewDB()
+	if err != nil {
+		return fmt.Errorf("failed to connect to database: %w", err)
+	}
+	defer db.Close()
+
+	queries := sqlc.New(db)
+
+	// Collect stats for each experiment
+	var experiments []expData
+
+	for _, name := range args {
+		exp, err := queries.GetExperimentByName(ctx, name)
+		if err != nil {
+			return fmt.Errorf("experiment %q not found", name)
+		}
+
+		row, err := queries.GetAggregateStatsByExperiment(ctx, sqlc.GetAggregateStatsByExperimentParams{
+			ExperimentID: toNullString(exp.ID),
+			CreatedAt:    "1970-01-01T00:00:00Z",
+		})
+		if err != nil {
+			return fmt.Errorf("failed to get stats for %q: %w", name, err)
+		}
+
+		tokenInput := toInt64(row.TotalTokenInput)
+		tokenOutput := toInt64(row.TotalTokenOutput)
+		totalTokens := tokenInput + tokenOutput
+		cost := toFloat64(row.TotalCostUsd)
+
+		tokensPerSes := int64(0)
+		costPerSes := 0.0
+		if row.SessionCount > 0 {
+			tokensPerSes = totalTokens / row.SessionCount
+			costPerSes = cost / float64(row.SessionCount)
+		}
+
+		experiments = append(experiments, expData{
+			name:         name,
+			sessions:     row.SessionCount,
+			turns:        toInt64(row.TotalTurns),
+			userMsgs:     toInt64(row.TotalUserMessages),
+			assistMsgs:   toInt64(row.TotalAssistantMessages),
+			tokenInput:   tokenInput,
+			tokenOutput:  tokenOutput,
+			cacheRead:    toInt64(row.TotalTokenCacheRead),
+			cacheWrite:   toInt64(row.TotalTokenCacheWrite),
+			cost:         cost,
+			errors:       toInt64(row.TotalErrors),
+			totalTokens:  totalTokens,
+			tokensPerSes: tokensPerSes,
+			costPerSes:   costPerSes,
+		})
+	}
+
+	// Print comparison table
+	fmt.Println()
+	fmt.Printf("  Experiment Comparison\n")
+	fmt.Printf("  =====================\n")
+	fmt.Println()
+
+	// Calculate column widths
+	maxNameLen := 18 // "Metric" column
+	for _, e := range experiments {
+		if len(e.name) > maxNameLen {
+			maxNameLen = len(e.name)
+		}
+	}
+	colWidth := maxNameLen + 2
+	if colWidth < 14 {
+		colWidth = 14
+	}
+
+	// Print header
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintf(w, "  METRIC\t")
+	for _, e := range experiments {
+		fmt.Fprintf(w, "%s\t", e.name)
+	}
+	fmt.Fprintln(w)
+
+	fmt.Fprintf(w, "  ------\t")
+	for range experiments {
+		fmt.Fprintf(w, "------\t")
+	}
+	fmt.Fprintln(w)
+
+	// Print rows
+	printCompareRow(w, "Sessions", experiments, func(e expData) string { return fmt.Sprintf("%d", e.sessions) })
+	printCompareRow(w, "Turns", experiments, func(e expData) string { return formatNumber(e.turns) })
+	printCompareRow(w, "User messages", experiments, func(e expData) string { return formatNumber(e.userMsgs) })
+	printCompareRow(w, "Assistant msgs", experiments, func(e expData) string { return formatNumber(e.assistMsgs) })
+	printCompareRow(w, "Errors", experiments, func(e expData) string { return fmt.Sprintf("%d", e.errors) })
+	fmt.Fprintln(w)
+	printCompareRow(w, "Token input", experiments, func(e expData) string { return formatNumber(e.tokenInput) })
+	printCompareRow(w, "Token output", experiments, func(e expData) string { return formatNumber(e.tokenOutput) })
+	printCompareRow(w, "Cache read", experiments, func(e expData) string { return formatNumber(e.cacheRead) })
+	printCompareRow(w, "Cache write", experiments, func(e expData) string { return formatNumber(e.cacheWrite) })
+	printCompareRow(w, "Total tokens", experiments, func(e expData) string { return formatNumber(e.totalTokens) })
+	fmt.Fprintln(w)
+	printCompareRow(w, "Cost", experiments, func(e expData) string { return fmt.Sprintf("$%.2f", e.cost) })
+	printCompareRow(w, "Tokens/session", experiments, func(e expData) string { return formatNumber(e.tokensPerSes) })
+	printCompareRow(w, "Cost/session", experiments, func(e expData) string { return fmt.Sprintf("$%.4f", e.costPerSes) })
+
+	w.Flush()
+	fmt.Println()
+
+	return nil
+}
+
+func printCompareRow(w *tabwriter.Writer, label string, experiments []expData, getValue func(expData) string) {
+	fmt.Fprintf(w, "  %s\t", label)
+	for _, e := range experiments {
+		fmt.Fprintf(w, "%s\t", getValue(e))
+	}
+	fmt.Fprintln(w)
+}
+
+func repeatChar(c rune, n int) string {
+	result := make([]rune, n)
+	for i := range result {
+		result[i] = c
+	}
+	return string(result)
 }

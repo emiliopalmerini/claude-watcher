@@ -49,25 +49,25 @@ func init() {
 }
 
 type ExportSession struct {
-	ID                     string  `json:"id"`
-	ProjectID              string  `json:"project_id"`
-	ExperimentID           string  `json:"experiment_id,omitempty"`
-	Cwd                    string  `json:"cwd"`
-	PermissionMode         string  `json:"permission_mode"`
-	ExitReason             string  `json:"exit_reason"`
-	StartedAt              string  `json:"started_at,omitempty"`
-	EndedAt                string  `json:"ended_at,omitempty"`
-	DurationSeconds        int64   `json:"duration_seconds,omitempty"`
-	CreatedAt              string  `json:"created_at"`
-	MessageCountUser       int64   `json:"message_count_user"`
-	MessageCountAssistant  int64   `json:"message_count_assistant"`
-	TurnCount              int64   `json:"turn_count"`
-	TokenInput             int64   `json:"token_input"`
-	TokenOutput            int64   `json:"token_output"`
-	TokenCacheRead         int64   `json:"token_cache_read"`
-	TokenCacheWrite        int64   `json:"token_cache_write"`
-	CostEstimateUsd        float64 `json:"cost_estimate_usd,omitempty"`
-	ErrorCount             int64   `json:"error_count"`
+	ID                    string  `json:"id"`
+	ProjectID             string  `json:"project_id"`
+	ExperimentID          string  `json:"experiment_id,omitempty"`
+	Cwd                   string  `json:"cwd"`
+	PermissionMode        string  `json:"permission_mode"`
+	ExitReason            string  `json:"exit_reason"`
+	StartedAt             string  `json:"started_at,omitempty"`
+	EndedAt               string  `json:"ended_at,omitempty"`
+	DurationSeconds       int64   `json:"duration_seconds,omitempty"`
+	CreatedAt             string  `json:"created_at"`
+	MessageCountUser      int64   `json:"message_count_user"`
+	MessageCountAssistant int64   `json:"message_count_assistant"`
+	TurnCount             int64   `json:"turn_count"`
+	TokenInput            int64   `json:"token_input"`
+	TokenOutput           int64   `json:"token_output"`
+	TokenCacheRead        int64   `json:"token_cache_read"`
+	TokenCacheWrite       int64   `json:"token_cache_write"`
+	CostEstimateUsd       float64 `json:"cost_estimate_usd,omitempty"`
+	ErrorCount            int64   `json:"error_count"`
 }
 
 func runExportSessions(cmd *cobra.Command, args []string) error {

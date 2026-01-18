@@ -103,3 +103,23 @@ WHERE s.created_at >= ?
 GROUP BY DATE(s.created_at)
 ORDER BY date ASC
 LIMIT ?;
+
+-- name: GetStatsForAllExperiments :many
+SELECT
+    e.id as experiment_id,
+    e.name as experiment_name,
+    COUNT(DISTINCT s.id) as session_count,
+    COALESCE(SUM(m.message_count_user), 0) as total_user_messages,
+    COALESCE(SUM(m.message_count_assistant), 0) as total_assistant_messages,
+    COALESCE(SUM(m.turn_count), 0) as total_turns,
+    COALESCE(SUM(m.token_input), 0) as total_token_input,
+    COALESCE(SUM(m.token_output), 0) as total_token_output,
+    COALESCE(SUM(m.token_cache_read), 0) as total_token_cache_read,
+    COALESCE(SUM(m.token_cache_write), 0) as total_token_cache_write,
+    COALESCE(SUM(m.cost_estimate_usd), 0) as total_cost_usd,
+    COALESCE(SUM(m.error_count), 0) as total_errors
+FROM experiments e
+LEFT JOIN sessions s ON s.experiment_id = e.id
+LEFT JOIN session_metrics m ON s.id = m.session_id
+GROUP BY e.id, e.name
+ORDER BY e.created_at DESC;

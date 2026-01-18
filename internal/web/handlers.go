@@ -18,15 +18,15 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	statsRow, _ := queries.GetAggregateStats(ctx, startDate)
 
 	stats := templates.DashboardStats{
-		SessionCount:  statsRow.SessionCount,
-		TotalTokens:   toInt64(statsRow.TotalTokenInput) + toInt64(statsRow.TotalTokenOutput),
-		TotalCost:     toFloat64(statsRow.TotalCostUsd),
-		TotalTurns:    toInt64(statsRow.TotalTurns),
-		TokenInput:    toInt64(statsRow.TotalTokenInput),
-		TokenOutput:   toInt64(statsRow.TotalTokenOutput),
-		CacheRead:     toInt64(statsRow.TotalTokenCacheRead),
-		CacheWrite:    toInt64(statsRow.TotalTokenCacheWrite),
-		TotalErrors:   toInt64(statsRow.TotalErrors),
+		SessionCount: statsRow.SessionCount,
+		TotalTokens:  toInt64(statsRow.TotalTokenInput) + toInt64(statsRow.TotalTokenOutput),
+		TotalCost:    toFloat64(statsRow.TotalCostUsd),
+		TotalTurns:   toInt64(statsRow.TotalTurns),
+		TokenInput:   toInt64(statsRow.TotalTokenInput),
+		TokenOutput:  toInt64(statsRow.TotalTokenOutput),
+		CacheRead:    toInt64(statsRow.TotalTokenCacheRead),
+		CacheWrite:   toInt64(statsRow.TotalTokenCacheWrite),
+		TotalErrors:  toInt64(statsRow.TotalErrors),
 	}
 
 	// Get active experiment
@@ -219,11 +219,11 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	models := make([]templates.ModelPricing, 0, len(pricing))
 	for _, p := range pricing {
 		model := templates.ModelPricing{
-			ID:              p.ID,
-			DisplayName:     p.DisplayName,
-			InputPerMillion: p.InputPerMillion,
+			ID:               p.ID,
+			DisplayName:      p.DisplayName,
+			InputPerMillion:  p.InputPerMillion,
 			OutputPerMillion: p.OutputPerMillion,
-			IsDefault:       p.IsDefault == 1,
+			IsDefault:        p.IsDefault == 1,
 		}
 		if p.CacheReadPerMillion.Valid {
 			model.CacheReadPerMillion = p.CacheReadPerMillion.Float64

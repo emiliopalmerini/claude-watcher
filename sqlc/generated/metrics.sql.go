@@ -347,6 +347,78 @@ func (q *Queries) GetSessionMetricsBySessionID(ctx context.Context, sessionID st
 	return i, err
 }
 
+const getStatsForAllExperiments = `-- name: GetStatsForAllExperiments :many
+SELECT
+    e.id as experiment_id,
+    e.name as experiment_name,
+    COUNT(DISTINCT s.id) as session_count,
+    COALESCE(SUM(m.message_count_user), 0) as total_user_messages,
+    COALESCE(SUM(m.message_count_assistant), 0) as total_assistant_messages,
+    COALESCE(SUM(m.turn_count), 0) as total_turns,
+    COALESCE(SUM(m.token_input), 0) as total_token_input,
+    COALESCE(SUM(m.token_output), 0) as total_token_output,
+    COALESCE(SUM(m.token_cache_read), 0) as total_token_cache_read,
+    COALESCE(SUM(m.token_cache_write), 0) as total_token_cache_write,
+    COALESCE(SUM(m.cost_estimate_usd), 0) as total_cost_usd,
+    COALESCE(SUM(m.error_count), 0) as total_errors
+FROM experiments e
+LEFT JOIN sessions s ON s.experiment_id = e.id
+LEFT JOIN session_metrics m ON s.id = m.session_id
+GROUP BY e.id, e.name
+ORDER BY e.created_at DESC
+`
+
+type GetStatsForAllExperimentsRow struct {
+	ExperimentID           string      `json:"experiment_id"`
+	ExperimentName         string      `json:"experiment_name"`
+	SessionCount           int64       `json:"session_count"`
+	TotalUserMessages      interface{} `json:"total_user_messages"`
+	TotalAssistantMessages interface{} `json:"total_assistant_messages"`
+	TotalTurns             interface{} `json:"total_turns"`
+	TotalTokenInput        interface{} `json:"total_token_input"`
+	TotalTokenOutput       interface{} `json:"total_token_output"`
+	TotalTokenCacheRead    interface{} `json:"total_token_cache_read"`
+	TotalTokenCacheWrite   interface{} `json:"total_token_cache_write"`
+	TotalCostUsd           interface{} `json:"total_cost_usd"`
+	TotalErrors            interface{} `json:"total_errors"`
+}
+
+func (q *Queries) GetStatsForAllExperiments(ctx context.Context) ([]GetStatsForAllExperimentsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getStatsForAllExperiments)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetStatsForAllExperimentsRow{}
+	for rows.Next() {
+		var i GetStatsForAllExperimentsRow
+		if err := rows.Scan(
+			&i.ExperimentID,
+			&i.ExperimentName,
+			&i.SessionCount,
+			&i.TotalUserMessages,
+			&i.TotalAssistantMessages,
+			&i.TotalTurns,
+			&i.TotalTokenInput,
+			&i.TotalTokenOutput,
+			&i.TotalTokenCacheRead,
+			&i.TotalTokenCacheWrite,
+			&i.TotalCostUsd,
+			&i.TotalErrors,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getTopToolsUsage = `-- name: GetTopToolsUsage :many
 SELECT
     tool_name,
