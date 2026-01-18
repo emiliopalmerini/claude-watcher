@@ -57,21 +57,19 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 	stats.TopTools = topTools
 
-	// Get recent sessions
-	sessions, _ := queries.ListSessions(ctx, 5)
+	// Get recent sessions (with metrics in single query)
+	sessions, _ := queries.ListSessionsWithMetrics(ctx, 5)
 	recentSessions := make([]templates.SessionSummary, 0, len(sessions))
 	for _, sess := range sessions {
 		summary := templates.SessionSummary{
 			ID:         sess.ID,
 			CreatedAt:  sess.CreatedAt,
 			ExitReason: sess.ExitReason,
+			Turns:      sess.TurnCount,
+			Tokens:     sess.TotalTokens,
 		}
-		if m, err := queries.GetSessionMetricsBySessionID(ctx, sess.ID); err == nil {
-			summary.Turns = m.TurnCount
-			summary.Tokens = m.TokenInput + m.TokenOutput
-			if m.CostEstimateUsd.Valid {
-				summary.Cost = m.CostEstimateUsd.Float64
-			}
+		if sess.CostEstimateUsd.Valid {
+			summary.Cost = sess.CostEstimateUsd.Float64
 		}
 		recentSessions = append(recentSessions, summary)
 	}
@@ -107,7 +105,8 @@ func (s *Server) handleSessions(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	queries := sqlc.New(s.db)
 
-	sessions, _ := queries.ListSessions(ctx, 50)
+	// Get sessions with metrics in single query
+	sessions, _ := queries.ListSessionsWithMetrics(ctx, 50)
 
 	// Build quality lookup map
 	qualityMap := make(map[string]sqlc.ListSessionQualitiesForSessionsRow)
@@ -124,16 +123,14 @@ func (s *Server) handleSessions(w http.ResponseWriter, r *http.Request) {
 			CreatedAt:  sess.CreatedAt,
 			ExitReason: sess.ExitReason,
 			ProjectID:  sess.ProjectID,
+			Turns:      sess.TurnCount,
+			Tokens:     sess.TotalTokens,
 		}
 		if sess.ExperimentID.Valid {
 			summary.ExperimentID = sess.ExperimentID.String
 		}
-		if m, err := queries.GetSessionMetricsBySessionID(ctx, sess.ID); err == nil {
-			summary.Turns = m.TurnCount
-			summary.Tokens = m.TokenInput + m.TokenOutput
-			if m.CostEstimateUsd.Valid {
-				summary.Cost = m.CostEstimateUsd.Float64
-			}
+		if sess.CostEstimateUsd.Valid {
+			summary.Cost = sess.CostEstimateUsd.Float64
 		}
 		// Add quality data
 		if q, ok := qualityMap[sess.ID]; ok {
@@ -367,8 +364,8 @@ func (s *Server) handleExperimentDetail(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	// Get recent sessions for this experiment
-	sessions, _ := queries.ListSessionsByExperiment(ctx, sqlc.ListSessionsByExperimentParams{
+	// Get recent sessions for this experiment (with metrics in single query)
+	sessions, _ := queries.ListSessionsWithMetricsByExperiment(ctx, sqlc.ListSessionsWithMetricsByExperimentParams{
 		ExperimentID: toNullString(exp.ID),
 		Limit:        10,
 	})
@@ -376,13 +373,11 @@ func (s *Server) handleExperimentDetail(w http.ResponseWriter, r *http.Request) 
 		summary := templates.SessionSummary{
 			ID:        sess.ID,
 			CreatedAt: sess.CreatedAt,
+			Turns:     sess.TurnCount,
+			Tokens:    sess.TotalTokens,
 		}
-		if m, err := queries.GetSessionMetricsBySessionID(ctx, sess.ID); err == nil {
-			summary.Turns = m.TurnCount
-			summary.Tokens = m.TokenInput + m.TokenOutput
-			if m.CostEstimateUsd.Valid {
-				summary.Cost = m.CostEstimateUsd.Float64
-			}
+		if sess.CostEstimateUsd.Valid {
+			summary.Cost = sess.CostEstimateUsd.Float64
 		}
 		detail.RecentSessions = append(detail.RecentSessions, summary)
 	}

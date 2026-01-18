@@ -38,8 +38,17 @@ func NewServer(db *sql.DB, port int, ts *storage.TranscriptStorage) *Server {
 
 func (s *Server) setupRoutes() {
 	// Static files
-	staticFS, _ := fs.Sub(staticFiles, "static")
+	staticFS, err := fs.Sub(staticFiles, "static")
+	if err != nil {
+		panic(fmt.Sprintf("failed to create static filesystem: %v", err))
+	}
 	s.router.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticFS))))
+
+	// Health check
+	s.router.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("ok"))
+	})
 
 	// Pages
 	s.router.HandleFunc("GET /", s.handleDashboard)
@@ -80,8 +89,14 @@ func (s *Server) Start(ctx context.Context) error {
 		<-ctx.Done()
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		server.Shutdown(shutdownCtx)
+		if err := server.Shutdown(shutdownCtx); err != nil {
+			fmt.Printf("Server shutdown error: %v\n", err)
+		}
 	}()
 
-	return server.ListenAndServe()
+	err := server.ListenAndServe()
+	if err == http.ErrServerClosed {
+		return nil // Graceful shutdown
+	}
+	return err
 }

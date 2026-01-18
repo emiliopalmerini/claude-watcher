@@ -45,3 +45,28 @@ SELECT id, transcript_stored_path FROM sessions WHERE project_id = ? AND transcr
 
 -- name: GetSessionTranscriptPathsByExperiment :many
 SELECT id, transcript_stored_path FROM sessions WHERE experiment_id = ? AND transcript_stored_path IS NOT NULL;
+
+-- name: ListSessionsWithMetrics :many
+SELECT
+    s.id, s.project_id, s.experiment_id, s.cwd, s.permission_mode, s.exit_reason, s.created_at,
+    s.started_at, s.ended_at, s.duration_seconds,
+    COALESCE(m.turn_count, 0) as turn_count,
+    COALESCE(m.token_input, 0) + COALESCE(m.token_output, 0) as total_tokens,
+    m.cost_estimate_usd
+FROM sessions s
+LEFT JOIN session_metrics m ON s.id = m.session_id
+ORDER BY s.created_at DESC
+LIMIT ?;
+
+-- name: ListSessionsWithMetricsByExperiment :many
+SELECT
+    s.id, s.project_id, s.experiment_id, s.cwd, s.permission_mode, s.exit_reason, s.created_at,
+    s.started_at, s.ended_at, s.duration_seconds,
+    COALESCE(m.turn_count, 0) as turn_count,
+    COALESCE(m.token_input, 0) + COALESCE(m.token_output, 0) as total_tokens,
+    m.cost_estimate_usd
+FROM sessions s
+LEFT JOIN session_metrics m ON s.id = m.session_id
+WHERE s.experiment_id = ?
+ORDER BY s.created_at DESC
+LIMIT ?;

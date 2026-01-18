@@ -382,3 +382,141 @@ func (q *Queries) ListSessionsByProject(ctx context.Context, arg ListSessionsByP
 	}
 	return items, nil
 }
+
+const listSessionsWithMetrics = `-- name: ListSessionsWithMetrics :many
+SELECT
+    s.id, s.project_id, s.experiment_id, s.cwd, s.permission_mode, s.exit_reason, s.created_at,
+    s.started_at, s.ended_at, s.duration_seconds,
+    COALESCE(m.turn_count, 0) as turn_count,
+    COALESCE(m.token_input, 0) + COALESCE(m.token_output, 0) as total_tokens,
+    m.cost_estimate_usd
+FROM sessions s
+LEFT JOIN session_metrics m ON s.id = m.session_id
+ORDER BY s.created_at DESC
+LIMIT ?
+`
+
+type ListSessionsWithMetricsRow struct {
+	ID              string          `json:"id"`
+	ProjectID       string          `json:"project_id"`
+	ExperimentID    sql.NullString  `json:"experiment_id"`
+	Cwd             string          `json:"cwd"`
+	PermissionMode  string          `json:"permission_mode"`
+	ExitReason      string          `json:"exit_reason"`
+	CreatedAt       string          `json:"created_at"`
+	StartedAt       sql.NullString  `json:"started_at"`
+	EndedAt         sql.NullString  `json:"ended_at"`
+	DurationSeconds sql.NullInt64   `json:"duration_seconds"`
+	TurnCount       int64           `json:"turn_count"`
+	TotalTokens     int64           `json:"total_tokens"`
+	CostEstimateUsd sql.NullFloat64 `json:"cost_estimate_usd"`
+}
+
+func (q *Queries) ListSessionsWithMetrics(ctx context.Context, limit int64) ([]ListSessionsWithMetricsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listSessionsWithMetrics, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListSessionsWithMetricsRow{}
+	for rows.Next() {
+		var i ListSessionsWithMetricsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.ExperimentID,
+			&i.Cwd,
+			&i.PermissionMode,
+			&i.ExitReason,
+			&i.CreatedAt,
+			&i.StartedAt,
+			&i.EndedAt,
+			&i.DurationSeconds,
+			&i.TurnCount,
+			&i.TotalTokens,
+			&i.CostEstimateUsd,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSessionsWithMetricsByExperiment = `-- name: ListSessionsWithMetricsByExperiment :many
+SELECT
+    s.id, s.project_id, s.experiment_id, s.cwd, s.permission_mode, s.exit_reason, s.created_at,
+    s.started_at, s.ended_at, s.duration_seconds,
+    COALESCE(m.turn_count, 0) as turn_count,
+    COALESCE(m.token_input, 0) + COALESCE(m.token_output, 0) as total_tokens,
+    m.cost_estimate_usd
+FROM sessions s
+LEFT JOIN session_metrics m ON s.id = m.session_id
+WHERE s.experiment_id = ?
+ORDER BY s.created_at DESC
+LIMIT ?
+`
+
+type ListSessionsWithMetricsByExperimentParams struct {
+	ExperimentID sql.NullString `json:"experiment_id"`
+	Limit        int64          `json:"limit"`
+}
+
+type ListSessionsWithMetricsByExperimentRow struct {
+	ID              string          `json:"id"`
+	ProjectID       string          `json:"project_id"`
+	ExperimentID    sql.NullString  `json:"experiment_id"`
+	Cwd             string          `json:"cwd"`
+	PermissionMode  string          `json:"permission_mode"`
+	ExitReason      string          `json:"exit_reason"`
+	CreatedAt       string          `json:"created_at"`
+	StartedAt       sql.NullString  `json:"started_at"`
+	EndedAt         sql.NullString  `json:"ended_at"`
+	DurationSeconds sql.NullInt64   `json:"duration_seconds"`
+	TurnCount       int64           `json:"turn_count"`
+	TotalTokens     int64           `json:"total_tokens"`
+	CostEstimateUsd sql.NullFloat64 `json:"cost_estimate_usd"`
+}
+
+func (q *Queries) ListSessionsWithMetricsByExperiment(ctx context.Context, arg ListSessionsWithMetricsByExperimentParams) ([]ListSessionsWithMetricsByExperimentRow, error) {
+	rows, err := q.db.QueryContext(ctx, listSessionsWithMetricsByExperiment, arg.ExperimentID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListSessionsWithMetricsByExperimentRow{}
+	for rows.Next() {
+		var i ListSessionsWithMetricsByExperimentRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.ExperimentID,
+			&i.Cwd,
+			&i.PermissionMode,
+			&i.ExitReason,
+			&i.CreatedAt,
+			&i.StartedAt,
+			&i.EndedAt,
+			&i.DurationSeconds,
+			&i.TurnCount,
+			&i.TotalTokens,
+			&i.CostEstimateUsd,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
