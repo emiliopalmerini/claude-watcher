@@ -1,7 +1,7 @@
 .PHONY: all build test test-unit test-integration clean sqlc templ fmt lint run migrate reset install help
 
 # Variables
-BINARY_NAME := claude-watcher
+BINARY_NAME := mclaude
 BUILD_DIR := .
 GO_FILES := $(shell find . -name '*.go' -not -path './sqlc/generated/*')
 TEMPL_FILES := $(shell find . -name '*.templ')
@@ -27,15 +27,15 @@ generate: sqlc templ
 
 # Build the binary (depends on generated code)
 build: generate
-	go build -o $(BINARY_NAME) ./cmd/claude-watcher
+	go build -o $(BINARY_NAME) ./cmd/mclaude
 
 # Build with version info
 build-release: generate
-	go build -ldflags="-s -w" -o $(BINARY_NAME) ./cmd/claude-watcher
+	go build -ldflags="-s -w" -o $(BINARY_NAME) ./cmd/mclaude
 
 # Install to GOPATH/bin
 install: generate
-	go install ./cmd/claude-watcher
+	go install ./cmd/mclaude
 
 # === Testing ===
 
@@ -47,7 +47,7 @@ test: generate
 test-unit: generate
 	go test -v -short ./...
 
-# Run integration tests (requires CLAUDE_WATCHER_* env vars)
+# Run integration tests (requires MCLAUDE_* env vars)
 test-integration: generate
 	go test -v -run Integration ./...
 
@@ -117,7 +117,7 @@ clean-all: clean
 # === Help ===
 
 help:
-	@echo "claude-watcher - Personal analytics for Claude Code"
+	@echo "mclaude - Personal analytics for Claude Code"
 	@echo ""
 	@echo "Usage: make [target]"
 	@echo ""

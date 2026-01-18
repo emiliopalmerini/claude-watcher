@@ -9,14 +9,14 @@ import (
 )
 
 func NewDB() (*sql.DB, error) {
-	dbURL := os.Getenv("CLAUDE_WATCHER_DATABASE_URL")
+	dbURL := os.Getenv("MCLAUDE_DATABASE_URL")
 	if dbURL == "" {
-		return nil, fmt.Errorf("CLAUDE_WATCHER_DATABASE_URL environment variable is required")
+		return nil, fmt.Errorf("MCLAUDE_DATABASE_URL environment variable is required")
 	}
 
-	authToken := os.Getenv("CLAUDE_WATCHER_AUTH_TOKEN")
+	authToken := os.Getenv("MCLAUDE_AUTH_TOKEN")
 	if authToken == "" {
-		return nil, fmt.Errorf("CLAUDE_WATCHER_AUTH_TOKEN environment variable is required")
+		return nil, fmt.Errorf("MCLAUDE_AUTH_TOKEN environment variable is required")
 	}
 
 	connStr := fmt.Sprintf("%s?authToken=%s", dbURL, authToken)

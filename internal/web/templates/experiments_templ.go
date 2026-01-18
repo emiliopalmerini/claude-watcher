@@ -322,7 +322,7 @@ func Experiments(experiments []Experiment) templ.Component {
 				}
 			}
 			if len(experiments) == 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<div class=\"card text-center py-8\"><p class=\"text-gray-500\">No experiments yet</p><p class=\"text-sm text-gray-400 mt-1\">Create one with: claude-watcher experiment create \"name\"</p></div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<div class=\"card text-center py-8\"><p class=\"text-gray-500\">No experiments yet</p><p class=\"text-sm text-gray-400 mt-1\">Create one with: mclaude experiment create \"name\"</p></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/emiliopalmerini/claude-watcher/internal/domain"
-	"github.com/emiliopalmerini/claude-watcher/internal/ports"
-	"github.com/emiliopalmerini/claude-watcher/sqlc/generated"
+	"github.com/emiliopalmerini/mclaude/internal/domain"
+	"github.com/emiliopalmerini/mclaude/internal/ports"
+	"github.com/emiliopalmerini/mclaude/sqlc/generated"
 )
 
 type SessionRepository struct {

@@ -1,13 +1,13 @@
 { pkgs }:
 
 pkgs.buildGoModule {
-  pname = "claude-watcher";
+  pname = "mclaude";
   version = "0.1.0";
   src = pkgs.lib.cleanSource ../.;
 
   vendorHash = "sha256-RtVSv2eNHOTyPSDmuKqFTuwT4O7Kvk/SGvwf2O4k72E=";
 
-  subPackages = [ "cmd/claude-watcher" ];
+  subPackages = [ "cmd/mclaude" ];
 
   # Enable CGO for libsql support
   env.CGO_ENABLED = "1";
@@ -23,13 +23,13 @@ pkgs.buildGoModule {
 
   # Copy migrations for embedded use
   postInstall = ''
-    mkdir -p $out/share/claude-watcher
-    cp -r ${../.}/migrations $out/share/claude-watcher/
+    mkdir -p $out/share/mclaude
+    cp -r ${../.}/migrations $out/share/mclaude/
   '';
 
   meta = with pkgs.lib; {
     description = "Analytics and experimentation platform for Claude Code";
-    homepage = "https://github.com/emiliopalmerini/claude-watcher";
+    homepage = "https://github.com/emiliopalmerini/mclaude";
     license = licenses.mit;
     maintainers = [ ];
   };

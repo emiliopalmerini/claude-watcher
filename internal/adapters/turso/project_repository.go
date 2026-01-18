@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/emiliopalmerini/claude-watcher/internal/domain"
-	"github.com/emiliopalmerini/claude-watcher/sqlc/generated"
+	"github.com/emiliopalmerini/mclaude/internal/domain"
+	"github.com/emiliopalmerini/mclaude/sqlc/generated"
 )
 
 type ProjectRepository struct {

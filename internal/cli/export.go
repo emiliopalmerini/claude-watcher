@@ -9,8 +9,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/emiliopalmerini/claude-watcher/internal/adapters/turso"
-	sqlc "github.com/emiliopalmerini/claude-watcher/sqlc/generated"
+	"github.com/emiliopalmerini/mclaude/internal/adapters/turso"
+	sqlc "github.com/emiliopalmerini/mclaude/sqlc/generated"
 )
 
 var exportCmd = &cobra.Command{
@@ -19,9 +19,9 @@ var exportCmd = &cobra.Command{
 	Long: `Export session data for external analysis.
 
 Examples:
-  claude-watcher export sessions --format json --output sessions.json
-  claude-watcher export sessions --format csv --output sessions.csv
-  claude-watcher export sessions --experiment "baseline" --format json`,
+  mclaude export sessions --format json --output sessions.json
+  mclaude export sessions --format csv --output sessions.csv
+  mclaude export sessions --experiment "baseline" --format json`,
 }
 
 var exportSessionsCmd = &cobra.Command{

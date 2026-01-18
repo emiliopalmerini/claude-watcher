@@ -7,7 +7,7 @@
 *.dll
 *.so
 *.dylib
-/claude-watcher
+/mclaude
 /session-tracker
 /test-prompter
 /dashboard

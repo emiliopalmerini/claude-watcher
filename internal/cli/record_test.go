@@ -10,15 +10,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/emiliopalmerini/claude-watcher/internal/adapters/turso"
-	"github.com/emiliopalmerini/claude-watcher/internal/domain"
-	sqlc "github.com/emiliopalmerini/claude-watcher/sqlc/generated"
+	"github.com/emiliopalmerini/mclaude/internal/adapters/turso"
+	"github.com/emiliopalmerini/mclaude/internal/domain"
+	sqlc "github.com/emiliopalmerini/mclaude/sqlc/generated"
 )
 
 func TestRecordCommand_Integration(t *testing.T) {
 	// Skip if not in integration test mode
-	if os.Getenv("CLAUDE_WATCHER_DATABASE_URL") == "" {
-		t.Skip("Skipping integration test: CLAUDE_WATCHER_DATABASE_URL not set")
+	if os.Getenv("MCLAUDE_DATABASE_URL") == "" {
+		t.Skip("Skipping integration test: MCLAUDE_DATABASE_URL not set")
 	}
 
 	ctx := context.Background()

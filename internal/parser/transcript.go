@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/emiliopalmerini/claude-watcher/internal/domain"
+	"github.com/emiliopalmerini/mclaude/internal/domain"
 )
 
 type ParsedTranscript struct {

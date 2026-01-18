@@ -10,8 +10,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 
-	"github.com/emiliopalmerini/claude-watcher/internal/adapters/turso"
-	sqlc "github.com/emiliopalmerini/claude-watcher/sqlc/generated"
+	"github.com/emiliopalmerini/mclaude/internal/adapters/turso"
+	sqlc "github.com/emiliopalmerini/mclaude/sqlc/generated"
 )
 
 var experimentCmd = &cobra.Command{
@@ -26,7 +26,7 @@ var experimentCreateCmd = &cobra.Command{
 	Long: `Create a new experiment and automatically activate it.
 
 Examples:
-  claude-watcher experiment create "minimal-prompts" --description "Testing shorter prompts" --hypothesis "Reduces token usage"`,
+  mclaude experiment create "minimal-prompts" --description "Testing shorter prompts" --hypothesis "Reduces token usage"`,
 	Args: cobra.ExactArgs(1),
 	RunE: runExperimentCreate,
 }
@@ -75,7 +75,7 @@ var experimentStatsCmd = &cobra.Command{
 	Long: `Show detailed statistics for a specific experiment.
 
 Examples:
-  claude-watcher experiment stats "baseline"`,
+  mclaude experiment stats "baseline"`,
 	Args: cobra.ExactArgs(1),
 	RunE: runExperimentStats,
 }
@@ -86,8 +86,8 @@ var experimentCompareCmd = &cobra.Command{
 	Long: `Compare statistics side-by-side between two or more experiments.
 
 Examples:
-  claude-watcher experiment compare "baseline" "minimal-prompts"
-  claude-watcher experiment compare "exp1" "exp2" "exp3"`,
+  mclaude experiment compare "baseline" "minimal-prompts"
+  mclaude experiment compare "exp1" "exp2" "exp3"`,
 	Args: cobra.MinimumNArgs(2),
 	RunE: runExperimentCompare,
 }

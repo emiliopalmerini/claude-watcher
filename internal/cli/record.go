@@ -10,10 +10,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/emiliopalmerini/claude-watcher/internal/adapters/storage"
-	"github.com/emiliopalmerini/claude-watcher/internal/adapters/turso"
-	"github.com/emiliopalmerini/claude-watcher/internal/domain"
-	"github.com/emiliopalmerini/claude-watcher/internal/parser"
+	"github.com/emiliopalmerini/mclaude/internal/adapters/storage"
+	"github.com/emiliopalmerini/mclaude/internal/adapters/turso"
+	"github.com/emiliopalmerini/mclaude/internal/domain"
+	"github.com/emiliopalmerini/mclaude/internal/parser"
 )
 
 var recordCmd = &cobra.Command{
@@ -31,7 +31,7 @@ This command is designed to be called from a Claude Code hook:
           "hooks": [
             {
               "type": "command",
-              "command": "claude-watcher record"
+              "command": "mclaude record"
             }
           ]
         }

@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/emiliopalmerini/claude-watcher/internal/adapters/storage"
-	"github.com/emiliopalmerini/claude-watcher/internal/adapters/turso"
+	"github.com/emiliopalmerini/mclaude/internal/adapters/storage"
+	"github.com/emiliopalmerini/mclaude/internal/adapters/turso"
 )
 
 //go:embed static/*

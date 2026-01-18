@@ -8,7 +8,7 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "claude-watcher",
+	Use:   "mclaude",
 	Short: "Analytics and experimentation platform for Claude Code",
 	Long: `Claude Watcher is a personal analytics and experimentation platform for Claude Code usage.
 

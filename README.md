@@ -1,4 +1,4 @@
-# claude-watcher
+# mclaude
 
 A personal analytics and experimentation platform for Claude Code usage.
 
@@ -36,8 +36,8 @@ nix build
 ## Environment Variables
 
 ```bash
-export CLAUDE_WATCHER_DATABASE_URL="libsql://your-database.turso.io"
-export CLAUDE_WATCHER_AUTH_TOKEN="your-auth-token"
+export MCLAUDE_DATABASE_URL="libsql://your-database.turso.io"
+export MCLAUDE_AUTH_TOKEN="your-auth-token"
 ```
 
 ## Quick Start
@@ -45,7 +45,7 @@ export CLAUDE_WATCHER_AUTH_TOKEN="your-auth-token"
 ### 1. Run database migrations
 
 ```bash
-claude-watcher migrate
+mclaude migrate
 ```
 
 ### 2. Configure Claude Code hook
@@ -60,7 +60,7 @@ Add to `~/.claude/settings.json`:
         "hooks": [
           {
             "type": "command",
-            "command": "claude-watcher record"
+            "command": "mclaude record"
           }
         ]
       }
@@ -72,7 +72,7 @@ Add to `~/.claude/settings.json`:
 ### 3. Create an experiment
 
 ```bash
-claude-watcher experiment create "baseline" \
+mclaude experiment create "baseline" \
   --description "Normal usage patterns" \
   --hypothesis "Establish baseline metrics for comparison"
 ```
@@ -85,10 +85,10 @@ Sessions are automatically recorded when they end.
 
 ```bash
 # Quick stats
-claude-watcher stats
+mclaude stats
 
 # Or start the web dashboard
-claude-watcher serve
+mclaude serve
 ```
 
 ## CLI Commands
@@ -97,87 +97,87 @@ claude-watcher serve
 
 | Command | Description |
 |---------|-------------|
-| `claude-watcher record` | Hook handler - captures session data from stdin |
-| `claude-watcher migrate [n]` | Run migrations (up to version n, or all if omitted) |
-| `claude-watcher serve [--port 8080]` | Start web dashboard |
+| `mclaude record` | Hook handler - captures session data from stdin |
+| `mclaude migrate [n]` | Run migrations (up to version n, or all if omitted) |
+| `mclaude serve [--port 8080]` | Start web dashboard |
 
 ### Experiments
 
 ```bash
 # Create and activate an experiment
-claude-watcher experiment create "minimal-prompts" \
+mclaude experiment create "minimal-prompts" \
   --description "Testing with shorter, more focused prompts" \
   --hypothesis "Shorter prompts reduce token usage without impacting quality"
 
 # List experiments
-claude-watcher experiment list
+mclaude experiment list
 
 # Switch active experiment
-claude-watcher experiment activate <name>
-claude-watcher experiment deactivate <name>
+mclaude experiment activate <name>
+mclaude experiment deactivate <name>
 
 # End an experiment (sets end date)
-claude-watcher experiment end <name>
+mclaude experiment end <name>
 
 # Compare two experiments
-claude-watcher experiment compare <exp1> <exp2>
+mclaude experiment compare <exp1> <exp2>
 
 # Delete an experiment
-claude-watcher experiment delete <name>
+mclaude experiment delete <name>
 ```
 
 ### Stats & Sessions
 
 ```bash
 # Summary stats
-claude-watcher stats
-claude-watcher stats --experiment "minimal-prompts"
-claude-watcher stats --project <id>
-claude-watcher stats --period week  # today, week, month, all
+mclaude stats
+mclaude stats --experiment "minimal-prompts"
+mclaude stats --project <id>
+mclaude stats --period week  # today, week, month, all
 
 # List sessions
-claude-watcher sessions list [--last 10]
+mclaude sessions list [--last 10]
 ```
 
 ### Cost Configuration
 
 ```bash
 # List configured pricing
-claude-watcher cost list
+mclaude cost list
 
 # Set model pricing (USD per 1M tokens)
-claude-watcher cost set claude-sonnet-4-20250514 \
+mclaude cost set claude-sonnet-4-20250514 \
   --input 3.00 \
   --output 15.00 \
   --cache-read 0.30 \
   --cache-write 3.75
 
 # Set default model for cost estimation
-claude-watcher cost default claude-sonnet-4-20250514
+mclaude cost default claude-sonnet-4-20250514
 ```
 
 ### Cleanup
 
 ```bash
 # Delete old sessions
-claude-watcher cleanup --before 2024-01-01
+mclaude cleanup --before 2024-01-01
 
 # Delete by project or experiment
-claude-watcher cleanup --project <id>
-claude-watcher cleanup --experiment <name>
+mclaude cleanup --project <id>
+mclaude cleanup --experiment <name>
 
 # Delete specific session
-claude-watcher cleanup --session <id>
+mclaude cleanup --session <id>
 
 # Preview what would be deleted
-claude-watcher cleanup --before 2024-01-01 --dry-run
+mclaude cleanup --before 2024-01-01 --dry-run
 ```
 
 ### Export
 
 ```bash
-claude-watcher export sessions --format json --output sessions.json
-claude-watcher export sessions --format csv --output sessions.csv
+mclaude export sessions --format json --output sessions.json
+mclaude export sessions --format csv --output sessions.csv
 ```
 
 ## Web Dashboard
@@ -185,7 +185,7 @@ claude-watcher export sessions --format csv --output sessions.csv
 Start the dashboard:
 
 ```bash
-claude-watcher serve --port 8080
+mclaude serve --port 8080
 ```
 
 Open http://localhost:8080 to view:
@@ -216,7 +216,7 @@ All metrics are stored in a Turso database with normalized tables:
 Session transcripts are copied and compressed to:
 
 ```
-~/.local/share/claude-watcher/transcripts/<session_id>.jsonl.gz
+~/.local/share/mclaude/transcripts/<session_id>.jsonl.gz
 ```
 
 ## Development
@@ -245,7 +245,7 @@ make clean
 
 ```
 cmd/
-└── claude-watcher/         # CLI entry point
+└── mclaude/         # CLI entry point
 
 internal/
 ├── domain/                 # Domain entities

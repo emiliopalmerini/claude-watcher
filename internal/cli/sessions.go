@@ -10,8 +10,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/emiliopalmerini/claude-watcher/internal/adapters/turso"
-	sqlc "github.com/emiliopalmerini/claude-watcher/sqlc/generated"
+	"github.com/emiliopalmerini/mclaude/internal/adapters/turso"
+	sqlc "github.com/emiliopalmerini/mclaude/sqlc/generated"
 )
 
 var sessionsCmd = &cobra.Command{
@@ -26,10 +26,10 @@ var sessionsListCmd = &cobra.Command{
 	Long: `List recorded sessions with optional filters.
 
 Examples:
-  claude-watcher sessions list                     # Last 10 sessions
-  claude-watcher sessions list --last 20           # Last 20 sessions
-  claude-watcher sessions list --experiment "exp"  # Sessions for experiment
-  claude-watcher sessions list --project <id>      # Sessions for project`,
+  mclaude sessions list                     # Last 10 sessions
+  mclaude sessions list --last 20           # Last 20 sessions
+  mclaude sessions list --experiment "exp"  # Sessions for experiment
+  mclaude sessions list --project <id>      # Sessions for project`,
 	RunE: runSessionsList,
 }
 

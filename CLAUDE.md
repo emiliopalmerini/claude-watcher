@@ -24,14 +24,14 @@ Claude Watcher is a personal analytics and experimentation platform for Claude C
 ## Environment Variables
 
 ```bash
-CLAUDE_WATCHER_DATABASE_URL  # libsql connection URL
-CLAUDE_WATCHER_AUTH_TOKEN    # Turso auth token
+MCLAUDE_DATABASE_URL  # libsql connection URL
+MCLAUDE_AUTH_TOKEN    # Turso auth token
 ```
 
 ## Build Commands
 
 ```bash
-make build      # Build the claude-watcher binary
+make build      # Build the mclaude binary
 make test       # Run tests
 make sqlc       # Regenerate sqlc code
 make templ      # Regenerate templ templates
@@ -45,7 +45,7 @@ The codebase follows hexagonal architecture (ports & adapters):
 
 ```
 cmd/
-└── claude-watcher/             # Single CLI entry point (Cobra)
+└── mclaude/             # Single CLI entry point (Cobra)
 
 internal/
 ├── domain/                     # Domain entities (no dependencies)
@@ -210,14 +210,14 @@ The `record` command receives JSON from stdin (Claude Code hook), then:
 ### Reset database
 
 ```bash
-claude-watcher migrate 0    # Migrate down to version 0
-claude-watcher migrate      # Migrate up to latest
+mclaude migrate 0    # Migrate down to version 0
+mclaude migrate      # Migrate up to latest
 ```
 
 ### Test record command locally
 
 ```bash
-echo '{"session_id":"test123","transcript_path":"/path/to/transcript.jsonl","cwd":"/project","permission_mode":"default","reason":"exit"}' | claude-watcher record
+echo '{"session_id":"test123","transcript_path":"/path/to/transcript.jsonl","cwd":"/project","permission_mode":"default","reason":"exit"}' | mclaude record
 ```
 
 ### Debug transcript parsing

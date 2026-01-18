@@ -10,8 +10,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/emiliopalmerini/claude-watcher/internal/adapters/turso"
-	sqlc "github.com/emiliopalmerini/claude-watcher/sqlc/generated"
+	"github.com/emiliopalmerini/mclaude/internal/adapters/turso"
+	sqlc "github.com/emiliopalmerini/mclaude/sqlc/generated"
 )
 
 var costCmd = &cobra.Command{
@@ -32,8 +32,8 @@ var costSetCmd = &cobra.Command{
 	Long: `Set pricing for a model (USD per 1M tokens).
 
 Examples:
-  claude-watcher cost set claude-sonnet-4-20250514 --input 3.00 --output 15.00
-  claude-watcher cost set claude-opus-4-20250514 --input 15.00 --output 75.00 --cache-read 1.50 --cache-write 18.75`,
+  mclaude cost set claude-sonnet-4-20250514 --input 3.00 --output 15.00
+  mclaude cost set claude-opus-4-20250514 --input 15.00 --output 75.00 --cache-read 1.50 --cache-write 18.75`,
 	Args: cobra.ExactArgs(1),
 	RunE: runCostSet,
 }
@@ -96,7 +96,7 @@ func runCostList(cmd *cobra.Command, args []string) error {
 
 	if len(pricing) == 0 {
 		fmt.Println("No model pricing configured")
-		fmt.Println("\nUse 'claude-watcher cost set' to add pricing")
+		fmt.Println("\nUse 'mclaude cost set' to add pricing")
 		return nil
 	}
 

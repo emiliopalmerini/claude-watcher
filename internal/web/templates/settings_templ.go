@@ -165,7 +165,7 @@ func Settings(pricing []ModelPricing) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<p class=\"text-gray-500 text-sm mt-4\">Use CLI to manage: <code class=\"bg-gray-100 px-1 rounded\">claude-watcher cost set &lt;model-id&gt; --input X --output Y</code></p></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<p class=\"text-gray-500 text-sm mt-4\">Use CLI to manage: <code class=\"bg-gray-100 px-1 rounded\">mclaude cost set &lt;model-id&gt; --input X --output Y</code></p></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

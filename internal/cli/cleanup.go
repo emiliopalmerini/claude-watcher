@@ -7,9 +7,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/emiliopalmerini/claude-watcher/internal/adapters/storage"
-	"github.com/emiliopalmerini/claude-watcher/internal/adapters/turso"
-	sqlc "github.com/emiliopalmerini/claude-watcher/sqlc/generated"
+	"github.com/emiliopalmerini/mclaude/internal/adapters/storage"
+	"github.com/emiliopalmerini/mclaude/internal/adapters/turso"
+	sqlc "github.com/emiliopalmerini/mclaude/sqlc/generated"
 )
 
 var cleanupCmd = &cobra.Command{
@@ -18,11 +18,11 @@ var cleanupCmd = &cobra.Command{
 	Long: `Delete sessions based on various filters.
 
 Examples:
-  claude-watcher cleanup --before 2024-01-01        # Delete sessions before date
-  claude-watcher cleanup --project <id>             # Delete sessions for project
-  claude-watcher cleanup --experiment <name>        # Delete sessions for experiment
-  claude-watcher cleanup --session <id>             # Delete specific session
-  claude-watcher cleanup --before 2024-01-01 --dry-run  # Preview what would be deleted`,
+  mclaude cleanup --before 2024-01-01        # Delete sessions before date
+  mclaude cleanup --project <id>             # Delete sessions for project
+  mclaude cleanup --experiment <name>        # Delete sessions for experiment
+  mclaude cleanup --session <id>             # Delete specific session
+  mclaude cleanup --before 2024-01-01 --dry-run  # Preview what would be deleted`,
 	RunE: runCleanup,
 }
 

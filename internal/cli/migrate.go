@@ -14,8 +14,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/emiliopalmerini/claude-watcher/internal/adapters/turso"
-	"github.com/emiliopalmerini/claude-watcher/migrations"
+	"github.com/emiliopalmerini/mclaude/internal/adapters/turso"
+	"github.com/emiliopalmerini/mclaude/migrations"
 )
 
 var migrateCmd = &cobra.Command{
@@ -27,9 +27,9 @@ Without arguments, runs all pending migrations (up).
 With a version number, migrates to that specific version (up or down as needed).
 
 Examples:
-  claude-watcher migrate      # Run all pending migrations
-  claude-watcher migrate 5    # Migrate to version 5
-  claude-watcher migrate 0    # Rollback all migrations`,
+  mclaude migrate      # Run all pending migrations
+  mclaude migrate 5    # Migrate to version 5
+  mclaude migrate 0    # Rollback all migrations`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runMigrate,
 }

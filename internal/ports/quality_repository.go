@@ -3,7 +3,7 @@ package ports
 import (
 	"context"
 
-	"github.com/emiliopalmerini/claude-watcher/internal/domain"
+	"github.com/emiliopalmerini/mclaude/internal/domain"
 )
 
 type SessionQualityRepository interface {

@@ -111,7 +111,7 @@ func (s *TranscriptStorage) getPath(sessionID string) string {
 func getXDGDataDir() (string, error) {
 	// Check XDG_DATA_HOME first
 	if dataHome := os.Getenv("XDG_DATA_HOME"); dataHome != "" {
-		return filepath.Join(dataHome, "claude-watcher"), nil
+		return filepath.Join(dataHome, "mclaude"), nil
 	}
 
 	// Fall back to ~/.local/share
@@ -120,5 +120,5 @@ func getXDGDataDir() (string, error) {
 		return "", fmt.Errorf("failed to get home directory: %w", err)
 	}
 
-	return filepath.Join(homeDir, ".local", "share", "claude-watcher"), nil
+	return filepath.Join(homeDir, ".local", "share", "mclaude"), nil
 }

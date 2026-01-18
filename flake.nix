@@ -1,5 +1,5 @@
 {
-  description = "Claude Watcher - Analytics and experimentation platform for Claude Code";
+  description = "mclaude - Analytics and experimentation platform for Claude Code";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
@@ -13,8 +13,8 @@
       in
       {
         packages = {
-          claude-watcher = pkgs.callPackage ./nix/package.nix {};
-          default = self.packages.${system}.claude-watcher;
+          mclaude = pkgs.callPackage ./nix/package.nix {};
+          default = self.packages.${system}.mclaude;
         };
 
         devShells.default = pkgs.callPackage ./nix/devShell.nix {};

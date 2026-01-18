@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/emiliopalmerini/claude-watcher/internal/domain"
-	"github.com/emiliopalmerini/claude-watcher/internal/parser"
-	"github.com/emiliopalmerini/claude-watcher/internal/web/templates"
-	sqlc "github.com/emiliopalmerini/claude-watcher/sqlc/generated"
+	"github.com/emiliopalmerini/mclaude/internal/domain"
+	"github.com/emiliopalmerini/mclaude/internal/parser"
+	"github.com/emiliopalmerini/mclaude/internal/web/templates"
+	sqlc "github.com/emiliopalmerini/mclaude/sqlc/generated"
 )
 
 func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {

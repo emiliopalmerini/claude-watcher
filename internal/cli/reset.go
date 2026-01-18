@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/emiliopalmerini/claude-watcher/internal/adapters/turso"
+	"github.com/emiliopalmerini/mclaude/internal/adapters/turso"
 )
 
 var resetCmd = &cobra.Command{

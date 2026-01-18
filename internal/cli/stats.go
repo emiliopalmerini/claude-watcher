@@ -7,8 +7,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/emiliopalmerini/claude-watcher/internal/adapters/turso"
-	sqlc "github.com/emiliopalmerini/claude-watcher/sqlc/generated"
+	"github.com/emiliopalmerini/mclaude/internal/adapters/turso"
+	sqlc "github.com/emiliopalmerini/mclaude/sqlc/generated"
 )
 
 var statsCmd = &cobra.Command{
@@ -17,11 +17,11 @@ var statsCmd = &cobra.Command{
 	Long: `Show summary statistics for Claude Code usage.
 
 Examples:
-  claude-watcher stats                          # All-time stats
-  claude-watcher stats --period today           # Today's stats
-  claude-watcher stats --period week            # This week's stats
-  claude-watcher stats --experiment "baseline"  # Stats for an experiment
-  claude-watcher stats --project <id>           # Stats for a project`,
+  mclaude stats                          # All-time stats
+  mclaude stats --period today           # Today's stats
+  mclaude stats --period week            # This week's stats
+  mclaude stats --experiment "baseline"  # Stats for an experiment
+  mclaude stats --project <id>           # Stats for a project`,
 	RunE: runStats,
 }
 

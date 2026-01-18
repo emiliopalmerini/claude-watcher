@@ -9,9 +9,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/emiliopalmerini/claude-watcher/internal/adapters/storage"
-	"github.com/emiliopalmerini/claude-watcher/internal/adapters/turso"
-	"github.com/emiliopalmerini/claude-watcher/internal/web"
+	"github.com/emiliopalmerini/mclaude/internal/adapters/storage"
+	"github.com/emiliopalmerini/mclaude/internal/adapters/turso"
+	"github.com/emiliopalmerini/mclaude/internal/web"
 )
 
 var serveCmd = &cobra.Command{
@@ -20,8 +20,8 @@ var serveCmd = &cobra.Command{
 	Long: `Start the local web dashboard server.
 
 Examples:
-  claude-watcher serve              # Start on default port 8080
-  claude-watcher serve --port 3000  # Start on port 3000`,
+  mclaude serve              # Start on default port 8080
+  mclaude serve --port 3000  # Start on port 3000`,
 	RunE: runServe,
 }
 

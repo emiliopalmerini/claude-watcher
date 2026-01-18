@@ -1,15 +1,15 @@
-module github.com/emiliopalmerini/claude-watcher
+module github.com/emiliopalmerini/mclaude
 
 go 1.25.5
 
 require (
+	github.com/a-h/templ v0.3.977
 	github.com/google/uuid v1.6.0
 	github.com/spf13/cobra v1.10.2
 	github.com/tursodatabase/libsql-client-go v0.0.0-20251219100830-236aa1ff8acc
 )
 
 require (
-	github.com/a-h/templ v0.3.977 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.0 // indirect
 	github.com/coder/websocket v1.8.12 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect

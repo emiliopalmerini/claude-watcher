@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/emiliopalmerini/claude-watcher/internal/domain"
-	sqlc "github.com/emiliopalmerini/claude-watcher/sqlc/generated"
+	"github.com/emiliopalmerini/mclaude/internal/domain"
+	sqlc "github.com/emiliopalmerini/mclaude/sqlc/generated"
 )
 
 type SessionQualityRepository struct {
