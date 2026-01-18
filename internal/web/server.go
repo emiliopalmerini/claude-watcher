@@ -39,6 +39,7 @@ func (s *Server) setupRoutes() {
 	s.router.HandleFunc("GET /sessions", s.handleSessions)
 	s.router.HandleFunc("GET /sessions/{id}", s.handleSessionDetail)
 	s.router.HandleFunc("GET /experiments", s.handleExperiments)
+	s.router.HandleFunc("GET /experiments/compare", s.handleExperimentCompare)
 	s.router.HandleFunc("GET /experiments/{id}", s.handleExperimentDetail)
 	s.router.HandleFunc("GET /settings", s.handleSettings)
 

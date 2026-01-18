@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/emiliopalmerini/claude-watcher/internal/web/templates"
@@ -314,6 +315,68 @@ func (s *Server) handleExperimentDetail(w http.ResponseWriter, r *http.Request) 
 	templates.ExperimentDetailPage(detail).Render(ctx, w)
 }
 
+func (s *Server) handleExperimentCompare(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	queries := sqlc.New(s.db)
+
+	// Get experiment IDs from query params (e.g., ?ids=id1,id2,id3)
+	idsParam := r.URL.Query().Get("ids")
+	if idsParam == "" {
+		// No experiments selected, show empty comparison
+		templates.ExperimentComparePage(templates.ExperimentComparison{}).Render(ctx, w)
+		return
+	}
+
+	ids := splitIDs(idsParam)
+	if len(ids) < 2 {
+		templates.ExperimentComparePage(templates.ExperimentComparison{}).Render(ctx, w)
+		return
+	}
+
+	var items []templates.ExperimentCompareItem
+
+	for _, id := range ids {
+		exp, err := queries.GetExperimentByID(ctx, id)
+		if err != nil {
+			continue
+		}
+
+		item := templates.ExperimentCompareItem{
+			Name:     exp.Name,
+			IsActive: exp.IsActive == 1,
+		}
+
+		// Get aggregate stats
+		statsRow, err := queries.GetAggregateStatsByExperiment(ctx, sqlc.GetAggregateStatsByExperimentParams{
+			ExperimentID: toNullString(exp.ID),
+			CreatedAt:    "1970-01-01T00:00:00Z",
+		})
+		if err == nil {
+			item.SessionCount = statsRow.SessionCount
+			item.TotalTurns = toInt64(statsRow.TotalTurns)
+			item.UserMessages = toInt64(statsRow.TotalUserMessages)
+			item.AssistantMessages = toInt64(statsRow.TotalAssistantMessages)
+			item.TotalErrors = toInt64(statsRow.TotalErrors)
+			item.TokenInput = toInt64(statsRow.TotalTokenInput)
+			item.TokenOutput = toInt64(statsRow.TotalTokenOutput)
+			item.CacheRead = toInt64(statsRow.TotalTokenCacheRead)
+			item.CacheWrite = toInt64(statsRow.TotalTokenCacheWrite)
+			item.TotalTokens = item.TokenInput + item.TokenOutput
+			item.TotalCost = toFloat64(statsRow.TotalCostUsd)
+			if statsRow.SessionCount > 0 {
+				item.TokensPerSession = item.TotalTokens / statsRow.SessionCount
+				item.CostPerSession = item.TotalCost / float64(statsRow.SessionCount)
+			}
+		}
+
+		items = append(items, item)
+	}
+
+	templates.ExperimentComparePage(templates.ExperimentComparison{
+		Experiments: items,
+	}).Render(ctx, w)
+}
+
 func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	queries := sqlc.New(s.db)
@@ -515,6 +578,20 @@ func toNullString(s string) sql.NullString {
 		return sql.NullString{}
 	}
 	return sql.NullString{String: s, Valid: true}
+}
+
+func splitIDs(s string) []string {
+	if s == "" {
+		return nil
+	}
+	var ids []string
+	for _, id := range strings.Split(s, ",") {
+		id = strings.TrimSpace(id)
+		if id != "" {
+			ids = append(ids, id)
+		}
+	}
+	return ids
 }
 
 func getStartDateForPeriod(period string) string {

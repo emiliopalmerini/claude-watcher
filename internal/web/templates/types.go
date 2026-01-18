@@ -107,6 +107,28 @@ type ExperimentDetail struct {
 	RecentSessions []SessionSummary
 }
 
+type ExperimentComparison struct {
+	Experiments []ExperimentCompareItem
+}
+
+type ExperimentCompareItem struct {
+	Name              string
+	IsActive          bool
+	SessionCount      int64
+	TotalTurns        int64
+	UserMessages      int64
+	AssistantMessages int64
+	TotalErrors       int64
+	TokenInput        int64
+	TokenOutput       int64
+	CacheRead         int64
+	CacheWrite        int64
+	TotalTokens       int64
+	TotalCost         float64
+	TokensPerSession  int64
+	CostPerSession    float64
+}
+
 type ModelPricing struct {
 	ID                   string
 	DisplayName          string

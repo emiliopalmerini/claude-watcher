@@ -49,3 +49,7 @@ func formatCostPrecise(c float64) string {
 func formatInt(n int64) string {
 	return fmt.Sprintf("%d", n)
 }
+
+func colSpan(n int) string {
+	return fmt.Sprintf("%d", n)
+}

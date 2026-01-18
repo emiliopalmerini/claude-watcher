@@ -2,18 +2,32 @@ package templates
 
 templ Experiments(experiments []Experiment) {
 	@Layout("Experiments") {
-		<div class="space-y-6">
+		<div class="space-y-6" x-data="{ selected: [] }">
 			<div class="flex items-center justify-between">
 				<h1 class="text-2xl font-bold text-gray-900">Experiments</h1>
+				<a
+					class="btn btn-primary"
+					x-show="selected.length >= 2"
+					x-bind:href="'/experiments/compare?ids=' + selected.join(',')"
+				>
+					Compare (<span x-text="selected.length"></span>)
+				</a>
 			</div>
 
 			<div class="grid gap-4">
 				for _, exp := range experiments {
 					<div class="card">
 						<div class="flex items-start justify-between">
-							<div class="flex-1">
-								<div class="flex items-center gap-2">
-									<a href={ templ.SafeURL("/experiments/" + exp.ID) } class="text-lg font-semibold text-blue-600 hover:underline">{ exp.Name }</a>
+							<div class="flex items-start gap-3 flex-1">
+								<input
+									type="checkbox"
+									class="mt-1.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+									x-bind:value={ exp.ID }
+									x-on:change={ "selected.includes('" + exp.ID + "') ? selected = selected.filter(id => id !== '" + exp.ID + "') : selected.push('" + exp.ID + "')" }
+								/>
+								<div class="flex-1">
+									<div class="flex items-center gap-2">
+										<a href={ templ.SafeURL("/experiments/" + exp.ID) } class="text-lg font-semibold text-blue-600 hover:underline">{ exp.Name }</a>
 									if exp.IsActive {
 										<span class="badge badge-green">Active</span>
 									} else if exp.EndedAt != "" {
@@ -28,6 +42,7 @@ templ Experiments(experiments []Experiment) {
 								if exp.Hypothesis != "" {
 									<p class="text-gray-500 text-sm mt-2 italic">"{ exp.Hypothesis }"</p>
 								}
+								</div>
 							</div>
 							<div class="flex gap-2">
 								if !exp.IsActive && exp.EndedAt == "" {
