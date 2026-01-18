@@ -22,6 +22,8 @@ type Server struct {
 	port              int
 	transcriptStorage *storage.TranscriptStorage
 	qualityRepo       *turso.SessionQualityRepository
+	planConfigRepo    *turso.PlanConfigRepository
+	usageMetricsRepo  *turso.UsageMetricsRepository
 }
 
 func NewServer(db *sql.DB, port int, ts *storage.TranscriptStorage) *Server {
@@ -31,6 +33,8 @@ func NewServer(db *sql.DB, port int, ts *storage.TranscriptStorage) *Server {
 		port:              port,
 		transcriptStorage: ts,
 		qualityRepo:       turso.NewSessionQualityRepository(db),
+		planConfigRepo:    turso.NewPlanConfigRepository(db),
+		usageMetricsRepo:  turso.NewUsageMetricsRepository(db),
 	}
 	s.setupRoutes()
 	return s

@@ -34,6 +34,46 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		TotalErrors:  toInt64(statsRow.TotalErrors),
 	}
 
+	// Get usage limit stats
+	if planConfig, err := s.planConfigRepo.Get(ctx); err == nil && planConfig != nil {
+		usageStats := &templates.UsageLimitStats{
+			PlanType:    planConfig.PlanType,
+			WindowHours: planConfig.WindowHours,
+		}
+
+		// Get the token limit (learned or estimated)
+		if planConfig.LearnedTokenLimit != nil {
+			usageStats.TokenLimit = *planConfig.LearnedTokenLimit
+			usageStats.IsLearned = true
+		} else if preset, ok := domain.PlanPresets[planConfig.PlanType]; ok {
+			usageStats.TokenLimit = preset.TokenEstimate
+		}
+
+		// Get rolling window usage
+		if summary, err := s.usageMetricsRepo.GetRollingWindowSummary(ctx, planConfig.WindowHours); err == nil {
+			usageStats.TokensUsed = summary.TotalTokens
+
+			// Calculate percentage
+			if usageStats.TokenLimit > 0 {
+				usageStats.UsagePercent = (summary.TotalTokens / usageStats.TokenLimit) * 100
+			}
+
+			// Determine status
+			if usageStats.UsagePercent >= 100 {
+				usageStats.Status = "EXCEEDED"
+			} else if usageStats.UsagePercent >= 80 {
+				usageStats.Status = "WARNING"
+			} else {
+				usageStats.Status = "OK"
+			}
+
+			// Approximate minutes left (rolling window refreshes continuously)
+			usageStats.MinutesLeft = planConfig.WindowHours * 60
+		}
+
+		stats.UsageStats = usageStats
+	}
+
 	// Get active experiment
 	activeExp, _ := queries.GetActiveExperiment(ctx)
 	if activeExp.Name != "" {

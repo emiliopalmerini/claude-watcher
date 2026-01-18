@@ -61,3 +61,30 @@ func formatRating(r float64) string {
 func formatPercent(p float64) string {
 	return fmt.Sprintf("%.0f%%", p*100)
 }
+
+func formatTokensFloat(n float64) string {
+	if n < 1000 {
+		return fmt.Sprintf("%.0f", n)
+	}
+	if n < 1000000 {
+		return fmt.Sprintf("%.1fK", n/1000)
+	}
+	return fmt.Sprintf("%.1fM", n/1000000)
+}
+
+func formatUsagePercent(p float64) string {
+	return fmt.Sprintf("%.0f%%", p)
+}
+
+func planDisplayName(planType string) string {
+	switch planType {
+	case "pro":
+		return "Pro"
+	case "max_5x":
+		return "Max 5x"
+	case "max_20x":
+		return "Max 20x"
+	default:
+		return planType
+	}
+}
