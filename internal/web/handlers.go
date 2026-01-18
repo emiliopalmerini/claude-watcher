@@ -4,9 +4,12 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/emiliopalmerini/claude-watcher/internal/domain"
+	"github.com/emiliopalmerini/claude-watcher/internal/parser"
 	"github.com/emiliopalmerini/claude-watcher/internal/web/templates"
 	sqlc "github.com/emiliopalmerini/claude-watcher/sqlc/generated"
 )
@@ -369,6 +372,44 @@ func (s *Server) handleExperimentCompare(w http.ResponseWriter, r *http.Request)
 			}
 		}
 
+		// Get quality stats
+		qualityStats, err := queries.GetQualityStatsByExperiment(ctx, toNullString(exp.ID))
+		if err == nil && qualityStats.ReviewedCount > 0 {
+			item.ReviewedCount = qualityStats.ReviewedCount
+
+			if qualityStats.AvgOverallRating.Valid {
+				avg := qualityStats.AvgOverallRating.Float64
+				item.AvgOverall = &avg
+			}
+			if qualityStats.AvgAccuracy.Valid {
+				avg := qualityStats.AvgAccuracy.Float64
+				item.AvgAccuracy = &avg
+			}
+			if qualityStats.AvgHelpfulness.Valid {
+				avg := qualityStats.AvgHelpfulness.Float64
+				item.AvgHelpfulness = &avg
+			}
+			if qualityStats.AvgEfficiency.Valid {
+				avg := qualityStats.AvgEfficiency.Float64
+				item.AvgEfficiency = &avg
+			}
+
+			// Calculate success rate
+			successCount := int64(0)
+			failureCount := int64(0)
+			if qualityStats.SuccessCount.Valid {
+				successCount = int64(qualityStats.SuccessCount.Float64)
+			}
+			if qualityStats.FailureCount.Valid {
+				failureCount = int64(qualityStats.FailureCount.Float64)
+			}
+			total := successCount + failureCount
+			if total > 0 {
+				rate := float64(successCount) / float64(total)
+				item.SuccessRate = &rate
+			}
+		}
+
 		items = append(items, item)
 	}
 
@@ -541,6 +582,191 @@ func (s *Server) handleAPIDeleteExperiment(w http.ResponseWriter, r *http.Reques
 
 	w.Header().Set("HX-Redirect", "/experiments")
 	w.WriteHeader(http.StatusOK)
+}
+
+// Session Review Handlers
+
+func (s *Server) handleSessionReview(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	id := r.PathValue("id")
+	queries := sqlc.New(s.db)
+
+	// Get session
+	session, err := queries.GetSessionByID(ctx, id)
+	if err != nil {
+		http.Error(w, "Session not found", http.StatusNotFound)
+		return
+	}
+
+	// Build session detail
+	detail := templates.SessionDetail{
+		ID:             session.ID,
+		ProjectID:      session.ProjectID,
+		Cwd:            session.Cwd,
+		PermissionMode: session.PermissionMode,
+		ExitReason:     session.ExitReason,
+		CreatedAt:      session.CreatedAt,
+	}
+
+	if session.ExperimentID.Valid {
+		detail.ExperimentID = session.ExperimentID.String
+	}
+	if session.StartedAt.Valid {
+		detail.StartedAt = session.StartedAt.String
+	}
+	if session.EndedAt.Valid {
+		detail.EndedAt = session.EndedAt.String
+	}
+	if session.DurationSeconds.Valid {
+		detail.DurationSeconds = session.DurationSeconds.Int64
+	}
+
+	// Get metrics
+	if m, err := queries.GetSessionMetricsBySessionID(ctx, id); err == nil {
+		detail.MessageCountUser = m.MessageCountUser
+		detail.MessageCountAssistant = m.MessageCountAssistant
+		detail.TurnCount = m.TurnCount
+		detail.TokenInput = m.TokenInput
+		detail.TokenOutput = m.TokenOutput
+		detail.TokenCacheRead = m.TokenCacheRead
+		detail.TokenCacheWrite = m.TokenCacheWrite
+		detail.ErrorCount = m.ErrorCount
+		if m.CostEstimateUsd.Valid {
+			detail.CostEstimateUsd = m.CostEstimateUsd.Float64
+		}
+	}
+
+	// Get existing quality review
+	var quality templates.SessionQuality
+	if q, err := s.qualityRepo.GetBySessionID(ctx, id); err == nil && q != nil {
+		quality = convertDomainQualityToTemplate(q)
+	}
+
+	// Get transcript
+	var transcriptMessages []templates.TranscriptMessage
+	if s.transcriptStorage != nil {
+		data, err := s.transcriptStorage.Get(ctx, id)
+		if err == nil {
+			messages, _ := parser.ParseTranscriptForViewer(data)
+			transcriptMessages = convertViewerMessagesToTemplate(messages)
+		}
+	}
+
+	viewData := templates.SessionReviewData{
+		SessionDetail: detail,
+		Quality:       quality,
+		Transcript:    transcriptMessages,
+	}
+
+	templates.SessionReviewPage(viewData).Render(ctx, w)
+}
+
+func (s *Server) handleAPISaveQuality(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	id := r.PathValue("id")
+
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Invalid form data", http.StatusBadRequest)
+		return
+	}
+
+	quality := &domain.SessionQuality{
+		SessionID: id,
+	}
+
+	// Parse overall rating
+	if v := r.FormValue("overall_rating"); v != "" && v != "0" {
+		if rating, err := strconv.Atoi(v); err == nil && rating >= 1 && rating <= 5 {
+			quality.OverallRating = &rating
+		}
+	}
+
+	// Parse is_success
+	if v := r.FormValue("is_success"); v != "" {
+		success := v == "1"
+		quality.IsSuccess = &success
+	}
+
+	// Parse dimension ratings
+	if v := r.FormValue("accuracy_rating"); v != "" && v != "0" {
+		if rating, err := strconv.Atoi(v); err == nil && rating >= 1 && rating <= 5 {
+			quality.AccuracyRating = &rating
+		}
+	}
+	if v := r.FormValue("helpfulness_rating"); v != "" && v != "0" {
+		if rating, err := strconv.Atoi(v); err == nil && rating >= 1 && rating <= 5 {
+			quality.HelpfulnessRating = &rating
+		}
+	}
+	if v := r.FormValue("efficiency_rating"); v != "" && v != "0" {
+		if rating, err := strconv.Atoi(v); err == nil && rating >= 1 && rating <= 5 {
+			quality.EfficiencyRating = &rating
+		}
+	}
+
+	// Parse notes
+	if v := r.FormValue("notes"); v != "" {
+		quality.Notes = &v
+	}
+
+	// Set reviewed_at if any rating is provided
+	if quality.OverallRating != nil || quality.IsSuccess != nil {
+		now := time.Now()
+		quality.ReviewedAt = &now
+	}
+
+	// Save to database
+	if err := s.qualityRepo.Upsert(ctx, quality); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Return success indicator for HTMX
+	templates.QualitySavedIndicator().Render(ctx, w)
+}
+
+func convertDomainQualityToTemplate(q *domain.SessionQuality) templates.SessionQuality {
+	tq := templates.SessionQuality{
+		SessionID: q.SessionID,
+		IsSuccess: q.IsSuccess,
+	}
+	if q.OverallRating != nil {
+		tq.OverallRating = *q.OverallRating
+	}
+	if q.AccuracyRating != nil {
+		tq.AccuracyRating = *q.AccuracyRating
+	}
+	if q.HelpfulnessRating != nil {
+		tq.HelpfulnessRating = *q.HelpfulnessRating
+	}
+	if q.EfficiencyRating != nil {
+		tq.EfficiencyRating = *q.EfficiencyRating
+	}
+	if q.Notes != nil {
+		tq.Notes = *q.Notes
+	}
+	if q.ReviewedAt != nil {
+		tq.ReviewedAt = q.ReviewedAt.Format(time.RFC3339)
+	}
+	return tq
+}
+
+func convertViewerMessagesToTemplate(messages []parser.ViewerMessage) []templates.TranscriptMessage {
+	result := make([]templates.TranscriptMessage, len(messages))
+	for i, m := range messages {
+		result[i] = templates.TranscriptMessage{
+			Role:      m.Role,
+			Content:   m.Content,
+			Timestamp: m.Timestamp,
+		}
+		for _, t := range m.Tools {
+			result[i].Tools = append(result[i].Tools, templates.TranscriptToolUse{
+				Name:  t.Name,
+				Input: t.Input,
+			})
+		}
+	}
+	return result
 }
 
 // Helpers

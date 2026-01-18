@@ -81,6 +81,18 @@ type SessionMetric struct {
 	ErrorCount            int64           `json:"error_count"`
 }
 
+type SessionQuality struct {
+	SessionID         string         `json:"session_id"`
+	OverallRating     sql.NullInt64  `json:"overall_rating"`
+	IsSuccess         sql.NullInt64  `json:"is_success"`
+	AccuracyRating    sql.NullInt64  `json:"accuracy_rating"`
+	HelpfulnessRating sql.NullInt64  `json:"helpfulness_rating"`
+	EfficiencyRating  sql.NullInt64  `json:"efficiency_rating"`
+	Notes             sql.NullString `json:"notes"`
+	ReviewedAt        sql.NullString `json:"reviewed_at"`
+	CreatedAt         string         `json:"created_at"`
+}
+
 type SessionTool struct {
 	ID              int64         `json:"id"`
 	SessionID       string        `json:"session_id"`

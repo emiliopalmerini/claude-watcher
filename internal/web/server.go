@@ -8,22 +8,29 @@ import (
 	"io/fs"
 	"net/http"
 	"time"
+
+	"github.com/emiliopalmerini/claude-watcher/internal/adapters/storage"
+	"github.com/emiliopalmerini/claude-watcher/internal/adapters/turso"
 )
 
 //go:embed static/*
 var staticFiles embed.FS
 
 type Server struct {
-	db     *sql.DB
-	router *http.ServeMux
-	port   int
+	db                *sql.DB
+	router            *http.ServeMux
+	port              int
+	transcriptStorage *storage.TranscriptStorage
+	qualityRepo       *turso.SessionQualityRepository
 }
 
-func NewServer(db *sql.DB, port int) *Server {
+func NewServer(db *sql.DB, port int, ts *storage.TranscriptStorage) *Server {
 	s := &Server{
-		db:     db,
-		router: http.NewServeMux(),
-		port:   port,
+		db:                db,
+		router:            http.NewServeMux(),
+		port:              port,
+		transcriptStorage: ts,
+		qualityRepo:       turso.NewSessionQualityRepository(db),
 	}
 	s.setupRoutes()
 	return s
@@ -38,6 +45,7 @@ func (s *Server) setupRoutes() {
 	s.router.HandleFunc("GET /", s.handleDashboard)
 	s.router.HandleFunc("GET /sessions", s.handleSessions)
 	s.router.HandleFunc("GET /sessions/{id}", s.handleSessionDetail)
+	s.router.HandleFunc("GET /sessions/{id}/review", s.handleSessionReview)
 	s.router.HandleFunc("GET /experiments", s.handleExperiments)
 	s.router.HandleFunc("GET /experiments/compare", s.handleExperimentCompare)
 	s.router.HandleFunc("GET /experiments/{id}", s.handleExperimentDetail)
@@ -51,6 +59,9 @@ func (s *Server) setupRoutes() {
 	s.router.HandleFunc("POST /api/experiments/{id}/activate", s.handleAPIActivateExperiment)
 	s.router.HandleFunc("POST /api/experiments/{id}/deactivate", s.handleAPIDeactivateExperiment)
 	s.router.HandleFunc("DELETE /api/experiments/{id}", s.handleAPIDeleteExperiment)
+
+	// Quality review endpoints
+	s.router.HandleFunc("POST /api/sessions/{id}/quality", s.handleAPISaveQuality)
 }
 
 func (s *Server) Start(ctx context.Context) error {

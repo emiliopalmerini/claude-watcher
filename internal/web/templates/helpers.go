@@ -53,3 +53,11 @@ func formatInt(n int64) string {
 func colSpan(n int) string {
 	return fmt.Sprintf("%d", n)
 }
+
+func formatRating(r float64) string {
+	return fmt.Sprintf("%.1f ★", r)
+}
+
+func formatPercent(p float64) string {
+	return fmt.Sprintf("%.0f%%", p*100)
+}

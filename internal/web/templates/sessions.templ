@@ -52,7 +52,12 @@ templ SessionDetailPage(session SessionDetail) {
 					<a href="/sessions" class="text-sm text-blue-600 hover:underline">&larr; Back to Sessions</a>
 					<h1 class="text-2xl font-bold text-gray-900 mt-2 font-mono">{ truncateID(session.ID) }</h1>
 				</div>
-				<span class={ "badge", exitReasonBadge(session.ExitReason) }>{ session.ExitReason }</span>
+				<div class="flex items-center gap-3">
+					<a href={ templ.SafeURL("/sessions/" + session.ID + "/review") } class="btn btn-primary">
+						Review Session
+					</a>
+					<span class={ "badge", exitReasonBadge(session.ExitReason) }>{ session.ExitReason }</span>
+				</div>
 			</div>
 
 			<!-- Metrics Cards -->

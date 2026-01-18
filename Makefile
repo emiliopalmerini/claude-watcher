@@ -4,71 +4,77 @@
 BINARY_NAME := claude-watcher
 BUILD_DIR := .
 GO_FILES := $(shell find . -name '*.go' -not -path './sqlc/generated/*')
+TEMPL_FILES := $(shell find . -name '*.templ')
+SQL_FILES := $(shell find sqlc/queries -name '*.sql')
 
 # Default target
-all: tidy sqlc build
+all: build
 
-# Build the binary
-build:
-	go build -o $(BINARY_NAME) ./cmd/claude-watcher
+# === Code Generation ===
 
-# Build with version info
-build-release:
-	go build -ldflags="-s -w" -o $(BINARY_NAME) ./cmd/claude-watcher
-
-# Install to GOPATH/bin
-install:
-	go install ./cmd/claude-watcher
-
-# Run all tests
-test:
-	go test -v ./...
-
-# Run unit tests only (skip integration tests)
-test-unit:
-	go test -v -short ./...
-
-# Run integration tests (requires CLAUDE_WATCHER_* env vars)
-test-integration:
-	go test -v -run Integration ./...
-
-# Run tests with coverage
-test-coverage:
-	go test -coverprofile=coverage.out ./...
-	go tool cover -html=coverage.out -o coverage.html
-
-# Clean build artifacts
-clean:
-	rm -f $(BINARY_NAME)
-	rm -f coverage.out coverage.html
-
-# Generate sqlc code
-sqlc:
+# Generate sqlc code (depends on SQL files)
+sqlc: $(SQL_FILES)
 	sqlc generate
 
-# Generate templ templates (for web UI)
-templ:
+# Generate templ templates (depends on templ files)
+templ: $(TEMPL_FILES)
 	templ generate
 
 # Generate all code
 generate: sqlc templ
+
+# === Build ===
+
+# Build the binary (depends on generated code)
+build: generate
+	go build -o $(BINARY_NAME) ./cmd/claude-watcher
+
+# Build with version info
+build-release: generate
+	go build -ldflags="-s -w" -o $(BINARY_NAME) ./cmd/claude-watcher
+
+# Install to GOPATH/bin
+install: generate
+	go install ./cmd/claude-watcher
+
+# === Testing ===
+
+# Run all tests (depends on generated code)
+test: generate
+	go test -v ./...
+
+# Run unit tests only (skip integration tests)
+test-unit: generate
+	go test -v -short ./...
+
+# Run integration tests (requires CLAUDE_WATCHER_* env vars)
+test-integration: generate
+	go test -v -run Integration ./...
+
+# Run tests with coverage
+test-coverage: generate
+	go test -coverprofile=coverage.out ./...
+	go tool cover -html=coverage.out -o coverage.html
+
+# === Code Quality ===
 
 # Format code
 fmt:
 	go fmt ./...
 	gofmt -s -w .
 
-# Lint code
-lint:
+# Lint code (depends on generated code)
+lint: generate
 	golangci-lint run ./...
 
 # Tidy dependencies
 tidy:
 	go mod tidy
 
-# Run the CLI
-run: build
-	./$(BINARY_NAME)
+# Check everything (format, lint, test)
+check: fmt lint test
+
+# === Database ===
 
 # Run migrations
 migrate: build
@@ -76,7 +82,13 @@ migrate: build
 
 # Reset database (drop all tables)
 reset: build
-	./$(BINARY_NAME) reset
+	./$(BINARY_NAME) migrate 0
+
+# === Run ===
+
+# Run the CLI
+run: build
+	./$(BINARY_NAME)
 
 # Start web server (for development)
 serve: build
@@ -87,46 +99,58 @@ dev:
 	@echo "Watching for changes..."
 	@while true; do \
 		$(MAKE) build; \
-		fswatch -1 $(GO_FILES) > /dev/null 2>&1 || inotifywait -q -e modify $(GO_FILES) 2>/dev/null || sleep 2; \
+		fswatch -1 $(GO_FILES) $(TEMPL_FILES) > /dev/null 2>&1 || inotifywait -q -e modify $(GO_FILES) $(TEMPL_FILES) 2>/dev/null || sleep 2; \
 	done
 
-# Help
+# === Cleanup ===
+
+# Clean build artifacts
+clean:
+	rm -f $(BINARY_NAME)
+	rm -f coverage.out coverage.html
+
+# Clean generated code too
+clean-all: clean
+	rm -f sqlc/generated/*.go
+	rm -f internal/web/templates/*_templ.go
+
+# === Help ===
+
 help:
 	@echo "claude-watcher - Personal analytics for Claude Code"
 	@echo ""
 	@echo "Usage: make [target]"
 	@echo ""
 	@echo "Build targets:"
-	@echo "  build           Build the binary"
-	@echo "  build-release   Build optimized binary"
-	@echo "  install         Install to GOPATH/bin"
+	@echo "  all             Build everything (default)"
+	@echo "  build           Generate code + build binary"
+	@echo "  build-release   Generate code + build optimized binary"
+	@echo "  install         Generate code + install to GOPATH/bin"
 	@echo "  clean           Remove build artifacts"
+	@echo "  clean-all       Remove build + generated code"
 	@echo ""
 	@echo "Test targets:"
-	@echo "  test            Run all tests"
-	@echo "  test-unit       Run unit tests only"
-	@echo "  test-integration Run integration tests"
-	@echo "  test-coverage   Run tests with coverage report"
+	@echo "  test            Generate + run all tests"
+	@echo "  test-unit       Generate + run unit tests only"
+	@echo "  test-integration Generate + run integration tests"
+	@echo "  test-coverage   Generate + run tests with coverage report"
 	@echo ""
 	@echo "Code generation:"
-	@echo "  sqlc            Generate sqlc code"
-	@echo "  templ           Generate templ templates"
+	@echo "  sqlc            Generate sqlc code from SQL"
+	@echo "  templ           Generate Go code from templ templates"
 	@echo "  generate        Generate all code (sqlc + templ)"
 	@echo ""
 	@echo "Code quality:"
 	@echo "  fmt             Format code"
-	@echo "  lint            Run linter"
+	@echo "  lint            Generate + run linter"
 	@echo "  tidy            Tidy go modules"
+	@echo "  check           Format + lint + test"
 	@echo ""
 	@echo "Database:"
-	@echo "  migrate         Run database migrations"
-	@echo "  reset           Reset database (drop all tables)"
+	@echo "  migrate         Build + run database migrations"
+	@echo "  reset           Build + reset database to version 0"
 	@echo ""
 	@echo "Run:"
-	@echo "  run             Build and run CLI"
-	@echo "  serve           Start web server"
-	@echo "  dev             Watch and rebuild on changes"
-	@echo ""
-	@echo "Other:"
-	@echo "  all             tidy + sqlc + build"
-	@echo "  help            Show this help"
+	@echo "  run             Build + run CLI"
+	@echo "  serve           Build + start web server"
+	@echo "  dev             Watch files and rebuild on changes"

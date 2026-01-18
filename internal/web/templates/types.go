@@ -127,6 +127,13 @@ type ExperimentCompareItem struct {
 	TotalCost         float64
 	TokensPerSession  int64
 	CostPerSession    float64
+	// Quality metrics
+	ReviewedCount  int64
+	AvgOverall     *float64
+	SuccessRate    *float64
+	AvgAccuracy    *float64
+	AvgHelpfulness *float64
+	AvgEfficiency  *float64
 }
 
 type ModelPricing struct {
@@ -137,4 +144,49 @@ type ModelPricing struct {
 	CacheReadPerMillion  float64
 	CacheWritePerMillion float64
 	IsDefault            bool
+}
+
+// SessionQuality for review form and display
+type SessionQuality struct {
+	SessionID         string
+	OverallRating     int // 0 means unset
+	IsSuccess         *bool
+	AccuracyRating    int
+	HelpfulnessRating int
+	EfficiencyRating  int
+	Notes             string
+	ReviewedAt        string
+}
+
+// TranscriptMessage for transcript viewer
+type TranscriptMessage struct {
+	Role      string
+	Content   string
+	Timestamp string
+	Tools     []TranscriptToolUse
+}
+
+// TranscriptToolUse for displaying tool invocations
+type TranscriptToolUse struct {
+	Name  string
+	Input string
+}
+
+// SessionReviewData combines session detail with quality and transcript
+type SessionReviewData struct {
+	SessionDetail
+	Quality    SessionQuality
+	Transcript []TranscriptMessage
+}
+
+// QualityStats for experiment comparison
+type QualityStats struct {
+	ReviewedCount  int64
+	AvgOverall     *float64
+	SuccessCount   int64
+	FailureCount   int64
+	SuccessRate    *float64
+	AvgAccuracy    *float64
+	AvgHelpfulness *float64
+	AvgEfficiency  *float64
 }

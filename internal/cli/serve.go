@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/emiliopalmerini/claude-watcher/internal/adapters/storage"
 	"github.com/emiliopalmerini/claude-watcher/internal/adapters/turso"
 	"github.com/emiliopalmerini/claude-watcher/internal/web"
 )
@@ -38,6 +39,12 @@ func runServe(cmd *cobra.Command, args []string) error {
 	}
 	defer db.Close()
 
+	// Initialize transcript storage for review page
+	transcriptStorage, err := storage.NewTranscriptStorage()
+	if err != nil {
+		return fmt.Errorf("failed to initialize transcript storage: %w", err)
+	}
+
 	// Create context that cancels on interrupt
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -51,6 +58,6 @@ func runServe(cmd *cobra.Command, args []string) error {
 		cancel()
 	}()
 
-	server := web.NewServer(db, servePort)
+	server := web.NewServer(db, servePort, transcriptStorage)
 	return server.Start(ctx)
 }

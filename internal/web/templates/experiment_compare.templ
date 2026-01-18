@@ -133,6 +133,77 @@ templ ExperimentComparePage(data ExperimentComparison) {
 									<td class="py-2 px-4 text-right font-medium">{ formatCostPrecise(exp.CostPerSession) }</td>
 								}
 							</tr>
+
+							<!-- Quality -->
+							<tr class="bg-gray-50">
+								<td colspan={ colSpan(len(data.Experiments) + 1) } class="py-2 px-4 font-semibold text-gray-700">Quality</td>
+							</tr>
+							<tr>
+								<td class="py-2 px-4 text-gray-600">Sessions Reviewed</td>
+								for _, exp := range data.Experiments {
+									<td class="py-2 px-4 text-right font-medium">{ formatInt(exp.ReviewedCount) }</td>
+								}
+							</tr>
+							<tr>
+								<td class="py-2 px-4 text-gray-600">Avg Rating</td>
+								for _, exp := range data.Experiments {
+									<td class="py-2 px-4 text-right font-medium">
+										if exp.AvgOverall != nil {
+											{ formatRating(*exp.AvgOverall) }
+										} else {
+											<span class="text-gray-400">-</span>
+										}
+									</td>
+								}
+							</tr>
+							<tr>
+								<td class="py-2 px-4 text-gray-600">Success Rate</td>
+								for _, exp := range data.Experiments {
+									<td class="py-2 px-4 text-right font-medium">
+										if exp.SuccessRate != nil {
+											{ formatPercent(*exp.SuccessRate) }
+										} else {
+											<span class="text-gray-400">-</span>
+										}
+									</td>
+								}
+							</tr>
+							<tr>
+								<td class="py-2 px-4 text-gray-600">Avg Accuracy</td>
+								for _, exp := range data.Experiments {
+									<td class="py-2 px-4 text-right font-medium">
+										if exp.AvgAccuracy != nil {
+											{ formatRating(*exp.AvgAccuracy) }
+										} else {
+											<span class="text-gray-400">-</span>
+										}
+									</td>
+								}
+							</tr>
+							<tr>
+								<td class="py-2 px-4 text-gray-600">Avg Helpfulness</td>
+								for _, exp := range data.Experiments {
+									<td class="py-2 px-4 text-right font-medium">
+										if exp.AvgHelpfulness != nil {
+											{ formatRating(*exp.AvgHelpfulness) }
+										} else {
+											<span class="text-gray-400">-</span>
+										}
+									</td>
+								}
+							</tr>
+							<tr>
+								<td class="py-2 px-4 text-gray-600">Avg Efficiency</td>
+								for _, exp := range data.Experiments {
+									<td class="py-2 px-4 text-right font-medium">
+										if exp.AvgEfficiency != nil {
+											{ formatRating(*exp.AvgEfficiency) }
+										} else {
+											<span class="text-gray-400">-</span>
+										}
+									</td>
+								}
+							</tr>
 						</tbody>
 					</table>
 				</div>
