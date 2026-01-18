@@ -37,3 +37,15 @@ func formatDate(s string) string {
 	}
 	return t.Format("Jan 2, 2006")
 }
+
+func formatCost(c float64) string {
+	return fmt.Sprintf("$%.2f", c)
+}
+
+func formatCostPrecise(c float64) string {
+	return fmt.Sprintf("$%.4f", c)
+}
+
+func formatInt(n int64) string {
+	return fmt.Sprintf("%d", n)
+}

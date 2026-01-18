@@ -70,6 +70,41 @@ type Experiment struct {
 	EndedAt     string
 	IsActive    bool
 	CreatedAt   string
+	// Stats
+	SessionCount   int64
+	TotalTokens    int64
+	TotalCost      float64
+	TokensPerSess  int64
+	CostPerSession float64
+}
+
+type ExperimentDetail struct {
+	ID          string
+	Name        string
+	Description string
+	Hypothesis  string
+	StartedAt   string
+	EndedAt     string
+	IsActive    bool
+	CreatedAt   string
+	// Stats
+	SessionCount      int64
+	TotalTurns        int64
+	UserMessages      int64
+	AssistantMessages int64
+	TotalErrors       int64
+	TokenInput        int64
+	TokenOutput       int64
+	CacheRead         int64
+	CacheWrite        int64
+	TotalTokens       int64
+	TotalCost         float64
+	TokensPerSession  int64
+	CostPerSession    float64
+	// Top tools
+	TopTools []ToolUsage
+	// Recent sessions
+	RecentSessions []SessionSummary
 }
 
 type ModelPricing struct {

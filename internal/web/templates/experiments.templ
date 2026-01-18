@@ -11,9 +11,9 @@ templ Experiments(experiments []Experiment) {
 				for _, exp := range experiments {
 					<div class="card">
 						<div class="flex items-start justify-between">
-							<div>
+							<div class="flex-1">
 								<div class="flex items-center gap-2">
-									<h3 class="text-lg font-semibold">{ exp.Name }</h3>
+									<a href={ templ.SafeURL("/experiments/" + exp.ID) } class="text-lg font-semibold text-blue-600 hover:underline">{ exp.Name }</a>
 									if exp.IsActive {
 										<span class="badge badge-green">Active</span>
 									} else if exp.EndedAt != "" {
@@ -52,6 +52,31 @@ templ Experiments(experiments []Experiment) {
 								>Delete</button>
 							</div>
 						</div>
+
+						<!-- Stats Grid -->
+						<div class="mt-4 grid grid-cols-2 md:grid-cols-5 gap-4 pt-4 border-t border-gray-100">
+							<div>
+								<p class="text-xs text-gray-500 uppercase tracking-wide">Sessions</p>
+								<p class="text-lg font-semibold text-gray-900">{ formatInt(exp.SessionCount) }</p>
+							</div>
+							<div>
+								<p class="text-xs text-gray-500 uppercase tracking-wide">Tokens</p>
+								<p class="text-lg font-semibold text-gray-900">{ formatTokens(exp.TotalTokens) }</p>
+							</div>
+							<div>
+								<p class="text-xs text-gray-500 uppercase tracking-wide">Cost</p>
+								<p class="text-lg font-semibold text-gray-900">{ formatCost(exp.TotalCost) }</p>
+							</div>
+							<div>
+								<p class="text-xs text-gray-500 uppercase tracking-wide">Tokens/Sess</p>
+								<p class="text-lg font-semibold text-gray-900">{ formatTokens(exp.TokensPerSess) }</p>
+							</div>
+							<div>
+								<p class="text-xs text-gray-500 uppercase tracking-wide">Cost/Sess</p>
+								<p class="text-lg font-semibold text-gray-900">{ formatCostPrecise(exp.CostPerSession) }</p>
+							</div>
+						</div>
+
 						<div class="mt-4 text-sm text-gray-500">
 							Started: { formatDate(exp.StartedAt) }
 							if exp.EndedAt != "" {

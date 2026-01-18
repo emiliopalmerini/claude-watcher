@@ -123,3 +123,15 @@ LEFT JOIN sessions s ON s.experiment_id = e.id
 LEFT JOIN session_metrics m ON s.id = m.session_id
 GROUP BY e.id, e.name
 ORDER BY e.created_at DESC;
+
+-- name: GetTopToolsUsageByExperiment :many
+SELECT
+    tool_name,
+    SUM(invocation_count) as total_invocations,
+    SUM(error_count) as total_errors
+FROM session_tools st
+JOIN sessions s ON st.session_id = s.id
+WHERE s.experiment_id = ?
+GROUP BY tool_name
+ORDER BY total_invocations DESC
+LIMIT ?;

@@ -1,0 +1,184 @@
+package templates
+
+templ ExperimentDetailPage(exp ExperimentDetail) {
+	@Layout("Experiment: " + exp.Name) {
+		<div class="space-y-6">
+			<!-- Header -->
+			<div class="flex items-center justify-between">
+				<div>
+					<div class="flex items-center gap-3">
+						<a href="/experiments" class="text-gray-500 hover:text-gray-700">
+							<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+							</svg>
+						</a>
+						<h1 class="text-2xl font-bold text-gray-900">{ exp.Name }</h1>
+						if exp.IsActive {
+							<span class="badge badge-green">Active</span>
+						} else if exp.EndedAt != "" {
+							<span class="badge badge-gray">Ended</span>
+						} else {
+							<span class="badge badge-yellow">Inactive</span>
+						}
+					</div>
+					if exp.Description != "" {
+						<p class="text-gray-600 mt-2">{ exp.Description }</p>
+					}
+					if exp.Hypothesis != "" {
+						<p class="text-gray-500 text-sm mt-2 italic">"{ exp.Hypothesis }"</p>
+					}
+				</div>
+				<div class="flex gap-2">
+					if !exp.IsActive && exp.EndedAt == "" {
+						<button
+							class="btn btn-primary"
+							hx-post={ "/api/experiments/" + exp.ID + "/activate" }
+							hx-swap="none"
+						>Activate</button>
+					}
+					if exp.IsActive {
+						<button
+							class="btn btn-secondary"
+							hx-post={ "/api/experiments/" + exp.ID + "/deactivate" }
+							hx-swap="none"
+						>Deactivate</button>
+					}
+				</div>
+			</div>
+
+			<!-- Date Range -->
+			<div class="text-sm text-gray-500">
+				Started: { formatDate(exp.StartedAt) }
+				if exp.EndedAt != "" {
+					<span class="ml-4">Ended: { formatDate(exp.EndedAt) }</span>
+				}
+			</div>
+
+			<!-- Stats Cards -->
+			<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+				<div class="card">
+					<p class="text-sm text-gray-500">Sessions</p>
+					<p class="text-2xl font-bold text-gray-900">{ formatInt(exp.SessionCount) }</p>
+				</div>
+				<div class="card">
+					<p class="text-sm text-gray-500">Total Tokens</p>
+					<p class="text-2xl font-bold text-gray-900">{ formatTokens(exp.TotalTokens) }</p>
+				</div>
+				<div class="card">
+					<p class="text-sm text-gray-500">Total Cost</p>
+					<p class="text-2xl font-bold text-gray-900">{ formatCost(exp.TotalCost) }</p>
+				</div>
+				<div class="card">
+					<p class="text-sm text-gray-500">Total Turns</p>
+					<p class="text-2xl font-bold text-gray-900">{ formatTokens(exp.TotalTurns) }</p>
+				</div>
+			</div>
+
+			<!-- Efficiency Metrics -->
+			<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+				<div class="card">
+					<p class="text-sm text-gray-500">Tokens/Session</p>
+					<p class="text-2xl font-bold text-gray-900">{ formatTokens(exp.TokensPerSession) }</p>
+				</div>
+				<div class="card">
+					<p class="text-sm text-gray-500">Cost/Session</p>
+					<p class="text-2xl font-bold text-gray-900">{ formatCostPrecise(exp.CostPerSession) }</p>
+				</div>
+				<div class="card">
+					<p class="text-sm text-gray-500">User Messages</p>
+					<p class="text-2xl font-bold text-gray-900">{ formatTokens(exp.UserMessages) }</p>
+				</div>
+				<div class="card">
+					<p class="text-sm text-gray-500">Assistant Messages</p>
+					<p class="text-2xl font-bold text-gray-900">{ formatTokens(exp.AssistantMessages) }</p>
+				</div>
+			</div>
+
+			<!-- Token Breakdown & Tools -->
+			<div class="grid md:grid-cols-2 gap-6">
+				<!-- Token Breakdown -->
+				<div class="card">
+					<h3 class="text-lg font-semibold mb-4">Token Breakdown</h3>
+					<div class="space-y-3">
+						<div class="flex justify-between">
+							<span class="text-gray-600">Input</span>
+							<span class="font-medium">{ formatTokens(exp.TokenInput) }</span>
+						</div>
+						<div class="flex justify-between">
+							<span class="text-gray-600">Output</span>
+							<span class="font-medium">{ formatTokens(exp.TokenOutput) }</span>
+						</div>
+						<div class="flex justify-between">
+							<span class="text-gray-600">Cache Read</span>
+							<span class="font-medium">{ formatTokens(exp.CacheRead) }</span>
+						</div>
+						<div class="flex justify-between">
+							<span class="text-gray-600">Cache Write</span>
+							<span class="font-medium">{ formatTokens(exp.CacheWrite) }</span>
+						</div>
+						if exp.TotalErrors > 0 {
+							<div class="flex justify-between text-red-600">
+								<span>Errors</span>
+								<span class="font-medium">{ formatInt(exp.TotalErrors) }</span>
+							</div>
+						}
+					</div>
+				</div>
+
+				<!-- Top Tools -->
+				<div class="card">
+					<h3 class="text-lg font-semibold mb-4">Top Tools</h3>
+					if len(exp.TopTools) > 0 {
+						<div class="space-y-3">
+							for _, tool := range exp.TopTools {
+								<div class="flex justify-between">
+									<span class="text-gray-600">{ tool.Name }</span>
+									<span class="font-medium">{ formatTokens(tool.Count) } calls</span>
+								</div>
+							}
+						</div>
+					} else {
+						<p class="text-gray-500 text-sm">No tool usage data</p>
+					}
+				</div>
+			</div>
+
+			<!-- Recent Sessions -->
+			<div class="card">
+				<h3 class="text-lg font-semibold mb-4">Recent Sessions</h3>
+				if len(exp.RecentSessions) > 0 {
+					<div class="overflow-x-auto">
+						<table class="table">
+							<thead>
+								<tr>
+									<th>Session ID</th>
+									<th>Date</th>
+									<th>Turns</th>
+									<th>Tokens</th>
+									<th>Cost</th>
+								</tr>
+							</thead>
+							<tbody>
+								for _, sess := range exp.RecentSessions {
+									<tr>
+										<td>
+											<a href={ templ.SafeURL("/sessions/" + sess.ID) } class="text-blue-600 hover:underline">
+												{ truncateID(sess.ID) }
+											</a>
+										</td>
+										<td>{ formatDateTime(sess.CreatedAt) }</td>
+										<td>{ formatInt(sess.Turns) }</td>
+										<td>{ formatTokens(sess.Tokens) }</td>
+										<td>{ formatCost(sess.Cost) }</td>
+									</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+				} else {
+					<p class="text-gray-500 text-sm">No sessions in this experiment yet</p>
+				}
+			</div>
+		</div>
+	}
+}

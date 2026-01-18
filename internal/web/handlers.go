@@ -1,6 +1,7 @@
 package web
 
 import (
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -179,6 +180,13 @@ func (s *Server) handleExperiments(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	queries := sqlc.New(s.db)
 
+	// Get experiments with stats
+	expStats, _ := queries.GetStatsForAllExperiments(ctx)
+	statsMap := make(map[string]sqlc.GetStatsForAllExperimentsRow)
+	for _, es := range expStats {
+		statsMap[es.ExperimentID] = es
+	}
+
 	exps, _ := queries.ListExperiments(ctx)
 
 	experiments := make([]templates.Experiment, 0, len(exps))
@@ -199,6 +207,18 @@ func (s *Server) handleExperiments(w http.ResponseWriter, r *http.Request) {
 		if e.EndedAt.Valid {
 			exp.EndedAt = e.EndedAt.String
 		}
+
+		// Add stats
+		if es, ok := statsMap[e.ID]; ok {
+			exp.SessionCount = es.SessionCount
+			exp.TotalTokens = toInt64(es.TotalTokenInput) + toInt64(es.TotalTokenOutput)
+			exp.TotalCost = toFloat64(es.TotalCostUsd)
+			if es.SessionCount > 0 {
+				exp.TokensPerSess = exp.TotalTokens / es.SessionCount
+				exp.CostPerSession = exp.TotalCost / float64(es.SessionCount)
+			}
+		}
+
 		experiments = append(experiments, exp)
 	}
 
@@ -206,8 +226,92 @@ func (s *Server) handleExperiments(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleExperimentDetail(w http.ResponseWriter, r *http.Request) {
-	// TODO: implement
-	http.Error(w, "Not implemented", http.StatusNotImplemented)
+	ctx := r.Context()
+	id := r.PathValue("id")
+	queries := sqlc.New(s.db)
+
+	// Get experiment
+	exp, err := queries.GetExperimentByID(ctx, id)
+	if err != nil {
+		http.Error(w, "Experiment not found", http.StatusNotFound)
+		return
+	}
+
+	detail := templates.ExperimentDetail{
+		ID:        exp.ID,
+		Name:      exp.Name,
+		IsActive:  exp.IsActive == 1,
+		StartedAt: exp.StartedAt,
+		CreatedAt: exp.CreatedAt,
+	}
+	if exp.Description.Valid {
+		detail.Description = exp.Description.String
+	}
+	if exp.Hypothesis.Valid {
+		detail.Hypothesis = exp.Hypothesis.String
+	}
+	if exp.EndedAt.Valid {
+		detail.EndedAt = exp.EndedAt.String
+	}
+
+	// Get aggregate stats
+	statsRow, err := queries.GetAggregateStatsByExperiment(ctx, sqlc.GetAggregateStatsByExperimentParams{
+		ExperimentID: toNullString(exp.ID),
+		CreatedAt:    "1970-01-01T00:00:00Z",
+	})
+	if err == nil {
+		detail.SessionCount = statsRow.SessionCount
+		detail.TotalTurns = toInt64(statsRow.TotalTurns)
+		detail.UserMessages = toInt64(statsRow.TotalUserMessages)
+		detail.AssistantMessages = toInt64(statsRow.TotalAssistantMessages)
+		detail.TotalErrors = toInt64(statsRow.TotalErrors)
+		detail.TokenInput = toInt64(statsRow.TotalTokenInput)
+		detail.TokenOutput = toInt64(statsRow.TotalTokenOutput)
+		detail.CacheRead = toInt64(statsRow.TotalTokenCacheRead)
+		detail.CacheWrite = toInt64(statsRow.TotalTokenCacheWrite)
+		detail.TotalTokens = detail.TokenInput + detail.TokenOutput
+		detail.TotalCost = toFloat64(statsRow.TotalCostUsd)
+		if statsRow.SessionCount > 0 {
+			detail.TokensPerSession = detail.TotalTokens / statsRow.SessionCount
+			detail.CostPerSession = detail.TotalCost / float64(statsRow.SessionCount)
+		}
+	}
+
+	// Get top tools for this experiment
+	tools, _ := queries.GetTopToolsUsageByExperiment(ctx, sqlc.GetTopToolsUsageByExperimentParams{
+		ExperimentID: toNullString(exp.ID),
+		Limit:        5,
+	})
+	for _, t := range tools {
+		if t.TotalInvocations.Valid {
+			detail.TopTools = append(detail.TopTools, templates.ToolUsage{
+				Name:  t.ToolName,
+				Count: int64(t.TotalInvocations.Float64),
+			})
+		}
+	}
+
+	// Get recent sessions for this experiment
+	sessions, _ := queries.ListSessionsByExperiment(ctx, sqlc.ListSessionsByExperimentParams{
+		ExperimentID: toNullString(exp.ID),
+		Limit:        10,
+	})
+	for _, sess := range sessions {
+		summary := templates.SessionSummary{
+			ID:        sess.ID,
+			CreatedAt: sess.CreatedAt,
+		}
+		if m, err := queries.GetSessionMetricsBySessionID(ctx, sess.ID); err == nil {
+			summary.Turns = m.TurnCount
+			summary.Tokens = m.TokenInput + m.TokenOutput
+			if m.CostEstimateUsd.Valid {
+				summary.Cost = m.CostEstimateUsd.Float64
+			}
+		}
+		detail.RecentSessions = append(detail.RecentSessions, summary)
+	}
+
+	templates.ExperimentDetailPage(detail).Render(ctx, w)
 }
 
 func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
@@ -404,6 +508,13 @@ func toFloat64(v interface{}) float64 {
 	default:
 		return 0
 	}
+}
+
+func toNullString(s string) sql.NullString {
+	if s == "" {
+		return sql.NullString{}
+	}
+	return sql.NullString{String: s, Valid: true}
 }
 
 func getStartDateForPeriod(period string) string {

@@ -466,6 +466,53 @@ func (q *Queries) GetTopToolsUsage(ctx context.Context, arg GetTopToolsUsagePara
 	return items, nil
 }
 
+const getTopToolsUsageByExperiment = `-- name: GetTopToolsUsageByExperiment :many
+SELECT
+    tool_name,
+    SUM(invocation_count) as total_invocations,
+    SUM(error_count) as total_errors
+FROM session_tools st
+JOIN sessions s ON st.session_id = s.id
+WHERE s.experiment_id = ?
+GROUP BY tool_name
+ORDER BY total_invocations DESC
+LIMIT ?
+`
+
+type GetTopToolsUsageByExperimentParams struct {
+	ExperimentID sql.NullString `json:"experiment_id"`
+	Limit        int64          `json:"limit"`
+}
+
+type GetTopToolsUsageByExperimentRow struct {
+	ToolName         string          `json:"tool_name"`
+	TotalInvocations sql.NullFloat64 `json:"total_invocations"`
+	TotalErrors      sql.NullFloat64 `json:"total_errors"`
+}
+
+func (q *Queries) GetTopToolsUsageByExperiment(ctx context.Context, arg GetTopToolsUsageByExperimentParams) ([]GetTopToolsUsageByExperimentRow, error) {
+	rows, err := q.db.QueryContext(ctx, getTopToolsUsageByExperiment, arg.ExperimentID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetTopToolsUsageByExperimentRow{}
+	for rows.Next() {
+		var i GetTopToolsUsageByExperimentRow
+		if err := rows.Scan(&i.ToolName, &i.TotalInvocations, &i.TotalErrors); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSessionCommandsBySessionID = `-- name: ListSessionCommandsBySessionID :many
 SELECT id, session_id, command, exit_code, executed_at FROM session_commands WHERE session_id = ? ORDER BY id ASC
 `
