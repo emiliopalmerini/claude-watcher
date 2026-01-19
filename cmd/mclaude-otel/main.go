@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -36,7 +38,7 @@ func main() {
 	}()
 
 	server := otel.NewServer(db, *port, *healthPort)
-	if err := server.Start(ctx); err != nil {
+	if err := server.Start(ctx); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatalf("Server error: %v", err)
 	}
 }

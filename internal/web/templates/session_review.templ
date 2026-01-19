@@ -22,7 +22,7 @@ templ SessionReviewPage(data SessionReviewData) {
 			<!-- Quick Stats -->
 			<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
 				@StatCard("Turns", fmt.Sprintf("%d", data.TurnCount), "")
-				@StatCard("Tokens", formatTokens(data.TokenInput+data.TokenOutput), "")
+				@StatCard("Tokens", formatTokens(data.TokenInput + data.TokenOutput + data.TokenCacheRead + data.TokenCacheWrite), fmt.Sprintf("%s in / %s out / %s cache", formatTokens(data.TokenInput), formatTokens(data.TokenOutput), formatTokens(data.TokenCacheRead + data.TokenCacheWrite)))
 				@StatCard("Cost", fmt.Sprintf("$%.4f", data.CostEstimateUsd), "")
 				@StatCard("Errors", fmt.Sprintf("%d", data.ErrorCount), "")
 			</div>

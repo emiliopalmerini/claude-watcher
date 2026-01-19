@@ -92,7 +92,7 @@ func SessionReviewPage(data SessionReviewData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = StatCard("Tokens", formatTokens(data.TokenInput+data.TokenOutput), "").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = StatCard("Tokens", formatTokens(data.TokenInput+data.TokenOutput+data.TokenCacheRead+data.TokenCacheWrite), fmt.Sprintf("%s in / %s out / %s cache", formatTokens(data.TokenInput), formatTokens(data.TokenOutput), formatTokens(data.TokenCacheRead+data.TokenCacheWrite))).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

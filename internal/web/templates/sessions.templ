@@ -67,7 +67,7 @@ templ SessionDetailPage(session SessionDetail) {
 			<!-- Metrics Cards -->
 			<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
 				@StatCard("Turns", fmt.Sprintf("%d", session.TurnCount), "Conversation turns")
-				@StatCard("Tokens", formatTokens(session.TokenInput + session.TokenOutput), fmt.Sprintf("%s in / %s out", formatTokens(session.TokenInput), formatTokens(session.TokenOutput)))
+				@StatCard("Tokens", formatTokens(session.TokenInput + session.TokenOutput + session.TokenCacheRead + session.TokenCacheWrite), fmt.Sprintf("%s in / %s out / %s cache", formatTokens(session.TokenInput), formatTokens(session.TokenOutput), formatTokens(session.TokenCacheRead + session.TokenCacheWrite)))
 				@StatCard("Cost", fmt.Sprintf("$%.4f", session.CostEstimateUsd), "Estimated cost")
 				@QualityStatCard(session.Quality)
 			</div>

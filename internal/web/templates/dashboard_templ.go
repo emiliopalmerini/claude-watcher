@@ -74,7 +74,7 @@ func Dashboard(stats DashboardStats) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = StatCard("Tokens", formatTokens(stats.TotalTokens), fmt.Sprintf("%s in / %s out", formatTokens(stats.TokenInput), formatTokens(stats.TokenOutput))).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = StatCard("Tokens", formatTokens(stats.TotalTokens), fmt.Sprintf("%s in / %s out / %s cache", formatTokens(stats.TokenInput), formatTokens(stats.TokenOutput), formatTokens(stats.CacheRead+stats.CacheWrite))).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

@@ -15,7 +15,7 @@ templ Dashboard(stats DashboardStats) {
 			<!-- Stats Cards -->
 			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
 				@StatCard("Sessions", fmt.Sprintf("%d", stats.SessionCount), "Total sessions recorded")
-				@StatCard("Tokens", formatTokens(stats.TotalTokens), fmt.Sprintf("%s in / %s out", formatTokens(stats.TokenInput), formatTokens(stats.TokenOutput)))
+				@StatCard("Tokens", formatTokens(stats.TotalTokens), fmt.Sprintf("%s in / %s out / %s cache", formatTokens(stats.TokenInput), formatTokens(stats.TokenOutput), formatTokens(stats.CacheRead + stats.CacheWrite)))
 				@CostCard(stats.TotalCost, stats.DefaultModel)
 				@QualityDashboardCard(stats.ReviewedCount, stats.SuccessRate, stats.AvgOverall)
 				@UsageLimitCard(stats.UsageStats)

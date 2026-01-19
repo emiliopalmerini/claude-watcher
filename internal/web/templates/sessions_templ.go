@@ -300,7 +300,7 @@ func SessionDetailPage(session SessionDetail) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = StatCard("Tokens", formatTokens(session.TokenInput+session.TokenOutput), fmt.Sprintf("%s in / %s out", formatTokens(session.TokenInput), formatTokens(session.TokenOutput))).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = StatCard("Tokens", formatTokens(session.TokenInput+session.TokenOutput+session.TokenCacheRead+session.TokenCacheWrite), fmt.Sprintf("%s in / %s out / %s cache", formatTokens(session.TokenInput), formatTokens(session.TokenOutput), formatTokens(session.TokenCacheRead+session.TokenCacheWrite))).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
