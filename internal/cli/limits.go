@@ -11,6 +11,7 @@ import (
 
 	"github.com/emiliopalmerini/mclaude/internal/adapters/turso"
 	"github.com/emiliopalmerini/mclaude/internal/domain"
+	"github.com/emiliopalmerini/mclaude/internal/util"
 )
 
 var limitsCmd = &cobra.Command{
@@ -132,7 +133,7 @@ func runLimitsPlan(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Plan set to %s\n", preset.Name)
 	fmt.Printf("  Window: %d hours (rolling)\n", config.WindowHours)
 	fmt.Printf("  Estimated limit: ~%d messages (~%s tokens)\n",
-		preset.MessagesPerWindow, formatTokens(preset.TokenEstimate))
+		preset.MessagesPerWindow, util.FormatTokens(preset.TokenEstimate))
 	fmt.Println("\nRun 'mclaude limits learn' when you hit your limit to record the actual token limit.")
 	return nil
 }
@@ -171,7 +172,7 @@ func runLimitsLearn(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to save weekly learned limit: %w", err)
 		}
 
-		fmt.Printf("Weekly learned limit recorded: %s tokens\n", formatTokens(summary.TotalTokens))
+		fmt.Printf("Weekly learned limit recorded: %s tokens\n", util.FormatTokens(summary.TotalTokens))
 		fmt.Println("This will be used for future weekly limit checks.")
 	} else {
 		// Learn 5-hour limit
@@ -188,7 +189,7 @@ func runLimitsLearn(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to save learned limit: %w", err)
 		}
 
-		fmt.Printf("Learned limit recorded: %s tokens\n", formatTokens(summary.TotalTokens))
+		fmt.Printf("Learned limit recorded: %s tokens\n", util.FormatTokens(summary.TotalTokens))
 		fmt.Println("This will be used for future limit checks.")
 	}
 	return nil
@@ -252,9 +253,9 @@ func runLimitsList(cmd *cobra.Command, args []string) error {
 	status := getStatus(percentage, 0.8)
 
 	fmt.Printf("5-Hour Window:\n")
-	fmt.Printf("  Tokens: %s", formatTokens(summary.TotalTokens))
+	fmt.Printf("  Tokens: %s", util.FormatTokens(summary.TotalTokens))
 	if limit > 0 {
-		fmt.Printf(" / ~%s (%.0f%%)", formatTokens(limit), percentage*100)
+		fmt.Printf(" / ~%s (%.0f%%)", util.FormatTokens(limit), percentage*100)
 	}
 	fmt.Println()
 	fmt.Printf("  Status: %s", status)
@@ -286,9 +287,9 @@ func runLimitsList(cmd *cobra.Command, args []string) error {
 	weeklyStatus := getStatus(weeklyPercentage, 0.8)
 
 	fmt.Printf("\nWeekly Window (7 days):\n")
-	fmt.Printf("  Tokens: %s", formatTokens(weeklySummary.TotalTokens))
+	fmt.Printf("  Tokens: %s", util.FormatTokens(weeklySummary.TotalTokens))
 	if weeklyLimit > 0 {
-		fmt.Printf(" / ~%s (%.0f%%)", formatTokens(weeklyLimit), weeklyPercentage*100)
+		fmt.Printf(" / ~%s (%.0f%%)", util.FormatTokens(weeklyLimit), weeklyPercentage*100)
 	}
 	fmt.Println()
 	fmt.Printf("  Status: %s", weeklyStatus)
@@ -346,9 +347,9 @@ func runLimitsCheck(cmd *cobra.Command, args []string) error {
 	}
 	status := getStatus(percentage, 0.8)
 
-	fmt.Printf("5-Hour: %s", formatTokens(summary.TotalTokens))
+	fmt.Printf("5-Hour: %s", util.FormatTokens(summary.TotalTokens))
 	if limit > 0 {
-		fmt.Printf(" / %s (%.0f%%) - %s", formatTokens(limit), percentage*100, status)
+		fmt.Printf(" / %s (%.0f%%) - %s", util.FormatTokens(limit), percentage*100, status)
 	}
 	fmt.Println()
 
@@ -371,9 +372,9 @@ func runLimitsCheck(cmd *cobra.Command, args []string) error {
 	}
 	weeklyStatus := getStatus(weeklyPercentage, 0.8)
 
-	fmt.Printf("Weekly: %s", formatTokens(weeklySummary.TotalTokens))
+	fmt.Printf("Weekly: %s", util.FormatTokens(weeklySummary.TotalTokens))
 	if weeklyLimit > 0 {
-		fmt.Printf(" / %s (%.0f%%) - %s", formatTokens(weeklyLimit), weeklyPercentage*100, weeklyStatus)
+		fmt.Printf(" / %s (%.0f%%) - %s", util.FormatTokens(weeklyLimit), weeklyPercentage*100, weeklyStatus)
 	}
 	fmt.Println()
 
@@ -436,7 +437,7 @@ func runLimitsSet(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to set limit: %w", err)
 	}
 
-	fmt.Printf("Set %s limit to %s\n", limitType, formatTokens(value))
+	fmt.Printf("Set %s limit to %s\n", limitType, util.FormatTokens(value))
 	return nil
 }
 
@@ -475,14 +476,4 @@ func getStatus(percentage, warnThreshold float64) string {
 		return "WARNING"
 	}
 	return "OK"
-}
-
-func formatTokens(tokens float64) string {
-	if tokens >= 1_000_000 {
-		return fmt.Sprintf("%.1fM", tokens/1_000_000)
-	}
-	if tokens >= 1_000 {
-		return fmt.Sprintf("%.0fK", tokens/1_000)
-	}
-	return fmt.Sprintf("%.0f", tokens)
 }
