@@ -28,8 +28,14 @@ func (r *SessionMetricsRepository) Create(ctx context.Context, metrics *domain.S
 		costEstimate = sql.NullFloat64{Float64: *metrics.CostEstimateUSD, Valid: true}
 	}
 
+	var modelID sql.NullString
+	if metrics.ModelID != nil {
+		modelID = sql.NullString{String: *metrics.ModelID, Valid: true}
+	}
+
 	return r.queries.CreateSessionMetrics(ctx, sqlc.CreateSessionMetricsParams{
 		SessionID:             metrics.SessionID,
+		ModelID:               modelID,
 		MessageCountUser:      metrics.MessageCountUser,
 		MessageCountAssistant: metrics.MessageCountAssistant,
 		TurnCount:             metrics.TurnCount,
@@ -56,8 +62,14 @@ func (r *SessionMetricsRepository) GetBySessionID(ctx context.Context, sessionID
 		costEstimate = &row.CostEstimateUsd.Float64
 	}
 
+	var modelID *string
+	if row.ModelID.Valid {
+		modelID = &row.ModelID.String
+	}
+
 	return &domain.SessionMetrics{
 		SessionID:             row.SessionID,
+		ModelID:               modelID,
 		MessageCountUser:      row.MessageCountUser,
 		MessageCountAssistant: row.MessageCountAssistant,
 		TurnCount:             row.TurnCount,

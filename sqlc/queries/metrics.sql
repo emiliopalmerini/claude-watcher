@@ -1,6 +1,6 @@
 -- name: CreateSessionMetrics :exec
-INSERT OR REPLACE INTO session_metrics (session_id, message_count_user, message_count_assistant, turn_count, token_input, token_output, token_cache_read, token_cache_write, cost_estimate_usd, error_count)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT OR REPLACE INTO session_metrics (session_id, model_id, message_count_user, message_count_assistant, turn_count, token_input, token_output, token_cache_read, token_cache_write, cost_estimate_usd, error_count)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: GetSessionMetricsBySessionID :one
 SELECT * FROM session_metrics WHERE session_id = ?;

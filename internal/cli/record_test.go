@@ -143,6 +143,13 @@ func TestRecordCommand_Integration(t *testing.T) {
 		t.Error("Expected cost estimate to be set")
 	}
 
+	// Verify model ID was extracted
+	if !metrics.ModelID.Valid {
+		t.Error("Expected model ID to be set")
+	} else {
+		assertEqual(t, "metrics.ModelID", "claude-sonnet-4-20250514", metrics.ModelID.String)
+	}
+
 	// Verify tools
 	tools, err := queries.ListSessionToolsBySessionID(ctx, sessionID)
 	if err != nil {

@@ -19,6 +19,7 @@ type Session struct {
 
 type SessionMetrics struct {
 	SessionID             string
+	ModelID               *string // e.g., "claude-opus-4-5-20251101"
 	MessageCountUser      int64
 	MessageCountAssistant int64
 	TurnCount             int64

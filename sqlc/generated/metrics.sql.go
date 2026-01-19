@@ -57,12 +57,13 @@ func (q *Queries) CreateSessionFile(ctx context.Context, arg CreateSessionFilePa
 }
 
 const createSessionMetrics = `-- name: CreateSessionMetrics :exec
-INSERT OR REPLACE INTO session_metrics (session_id, message_count_user, message_count_assistant, turn_count, token_input, token_output, token_cache_read, token_cache_write, cost_estimate_usd, error_count)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT OR REPLACE INTO session_metrics (session_id, model_id, message_count_user, message_count_assistant, turn_count, token_input, token_output, token_cache_read, token_cache_write, cost_estimate_usd, error_count)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateSessionMetricsParams struct {
 	SessionID             string          `json:"session_id"`
+	ModelID               sql.NullString  `json:"model_id"`
 	MessageCountUser      int64           `json:"message_count_user"`
 	MessageCountAssistant int64           `json:"message_count_assistant"`
 	TurnCount             int64           `json:"turn_count"`
@@ -77,6 +78,7 @@ type CreateSessionMetricsParams struct {
 func (q *Queries) CreateSessionMetrics(ctx context.Context, arg CreateSessionMetricsParams) error {
 	_, err := q.db.ExecContext(ctx, createSessionMetrics,
 		arg.SessionID,
+		arg.ModelID,
 		arg.MessageCountUser,
 		arg.MessageCountAssistant,
 		arg.TurnCount,
@@ -326,7 +328,7 @@ func (q *Queries) GetDailyStats(ctx context.Context, arg GetDailyStatsParams) ([
 }
 
 const getSessionMetricsBySessionID = `-- name: GetSessionMetricsBySessionID :one
-SELECT session_id, message_count_user, message_count_assistant, turn_count, token_input, token_output, token_cache_read, token_cache_write, cost_estimate_usd, error_count FROM session_metrics WHERE session_id = ?
+SELECT session_id, message_count_user, message_count_assistant, turn_count, token_input, token_output, token_cache_read, token_cache_write, cost_estimate_usd, error_count, model_id FROM session_metrics WHERE session_id = ?
 `
 
 func (q *Queries) GetSessionMetricsBySessionID(ctx context.Context, sessionID string) (SessionMetric, error) {
@@ -343,6 +345,7 @@ func (q *Queries) GetSessionMetricsBySessionID(ctx context.Context, sessionID st
 		&i.TokenCacheWrite,
 		&i.CostEstimateUsd,
 		&i.ErrorCount,
+		&i.ModelID,
 	)
 	return i, err
 }

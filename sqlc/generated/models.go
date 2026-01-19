@@ -89,6 +89,7 @@ type SessionMetric struct {
 	TokenCacheWrite       int64           `json:"token_cache_write"`
 	CostEstimateUsd       sql.NullFloat64 `json:"cost_estimate_usd"`
 	ErrorCount            int64           `json:"error_count"`
+	ModelID               sql.NullString  `json:"model_id"`
 }
 
 type SessionQuality struct {

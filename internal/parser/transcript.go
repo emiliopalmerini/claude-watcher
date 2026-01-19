@@ -13,6 +13,7 @@ import (
 type ParsedTranscript struct {
 	StartedAt *time.Time
 	EndedAt   *time.Time
+	ModelID   *string // Model used in the session (e.g., "claude-opus-4-5-20251101")
 	Metrics   *domain.SessionMetrics
 	Tools     []*domain.SessionTool
 	Files     []*domain.SessionFile
@@ -22,6 +23,7 @@ type ParsedTranscript struct {
 type TranscriptEntry struct {
 	Type      string          `json:"type"`
 	Timestamp string          `json:"timestamp,omitempty"`
+	Model     string          `json:"model,omitempty"`
 	Message   *Message        `json:"message,omitempty"`
 	Usage     *Usage          `json:"usage,omitempty"`
 	Result    json.RawMessage `json:"result,omitempty"`
@@ -82,6 +84,7 @@ func ParseTranscript(sessionID, path string) (*ParsedTranscript, error) {
 	scanner.Buffer(buf, 10*1024*1024)
 
 	var firstTimestamp, lastTimestamp *time.Time
+	var modelID *string
 
 	for scanner.Scan() {
 		line := scanner.Bytes()
@@ -112,6 +115,11 @@ func ParseTranscript(sessionID, path string) (*ParsedTranscript, error) {
 			result.Metrics.MessageCountUser++
 		case "assistant":
 			result.Metrics.MessageCountAssistant++
+			// Capture model ID from assistant messages (use first occurrence)
+			if modelID == nil && entry.Model != "" {
+				m := entry.Model
+				modelID = &m
+			}
 			if entry.Message != nil {
 				processAssistantMessage(entry.Message, sessionID, toolCounts, fileCounts, result)
 			}
@@ -140,9 +148,10 @@ func ParseTranscript(sessionID, path string) (*ParsedTranscript, error) {
 	// Calculate turn count (pairs of user-assistant messages)
 	result.Metrics.TurnCount = min(result.Metrics.MessageCountUser, result.Metrics.MessageCountAssistant)
 
-	// Set timestamps
+	// Set timestamps and model
 	result.StartedAt = firstTimestamp
 	result.EndedAt = lastTimestamp
+	result.ModelID = modelID
 
 	// Convert maps to slices
 	for _, tool := range toolCounts {

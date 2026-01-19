@@ -176,11 +176,25 @@ func processRecordInput(hookInput *domain.HookInput) error {
 		fmt.Fprintf(os.Stderr, "warning: failed to store transcript copy: %v\n", err)
 	}
 
-	// Calculate cost estimate
+	// Set model ID from parsed transcript
+	parsed.Metrics.ModelID = parsed.ModelID
+
+	// Calculate cost estimate using model-specific pricing if available
 	var costEstimate *float64
-	defaultPricing, err := pricingRepo.GetDefault(ctx)
-	if err == nil && defaultPricing != nil {
-		cost := defaultPricing.CalculateCost(
+	var pricing *domain.ModelPricing
+
+	// Try to get pricing for the specific model used
+	if parsed.ModelID != nil {
+		pricing, _ = pricingRepo.GetByID(ctx, *parsed.ModelID)
+	}
+
+	// Fall back to default pricing if model-specific pricing not found
+	if pricing == nil {
+		pricing, _ = pricingRepo.GetDefault(ctx)
+	}
+
+	if pricing != nil {
+		cost := pricing.CalculateCost(
 			parsed.Metrics.TokenInput,
 			parsed.Metrics.TokenOutput,
 			parsed.Metrics.TokenCacheRead,
