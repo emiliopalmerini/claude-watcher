@@ -154,6 +154,18 @@ func planConfigFromRow(row sqlc.PlanConfig) *domain.PlanConfig {
 		t := util.ParseTimeSQLite(row.WindowStartTime.String)
 		config.WindowStartTime = &t
 	}
+	// Weekly fields
+	if row.WeeklyLearnedTokenLimit.Valid {
+		config.WeeklyLearnedTokenLimit = &row.WeeklyLearnedTokenLimit.Float64
+	}
+	if row.WeeklyLearnedAt.Valid {
+		t := util.ParseTimeSQLite(row.WeeklyLearnedAt.String)
+		config.WeeklyLearnedAt = &t
+	}
+	if row.WeeklyWindowStartTime.Valid {
+		t := util.ParseTimeSQLite(row.WeeklyWindowStartTime.String)
+		config.WeeklyWindowStartTime = &t
+	}
 	return config
 }
 
@@ -177,6 +189,50 @@ func (r *PlanConfigRepository) ResetWindowIfExpired(ctx context.Context, session
 	if config.WindowStartTime == nil || sessionStartTime.After(config.WindowStartTime.Add(windowDuration)) {
 		if err := r.UpdateWindowStartTime(ctx, sessionStartTime); err != nil {
 			return false, fmt.Errorf("failed to update window start time: %w", err)
+		}
+		return true, nil
+	}
+
+	return false, nil
+}
+
+// Weekly window methods
+
+func (r *PlanConfigRepository) GetWeeklyWindowSummary(ctx context.Context) (*domain.UsageSummary, error) {
+	row, err := r.queries.GetWeeklyWindowUsage(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get weekly window usage: %w", err)
+	}
+	return &domain.UsageSummary{
+		TotalTokens: row.TotalTokens,
+		TotalCost:   row.TotalCost,
+	}, nil
+}
+
+func (r *PlanConfigRepository) UpdateWeeklyWindowStartTime(ctx context.Context, t time.Time) error {
+	return r.queries.UpdateWeeklyWindowStartTime(ctx, sql.NullString{String: t.Format(time.RFC3339), Valid: true})
+}
+
+func (r *PlanConfigRepository) UpdateWeeklyLearnedLimit(ctx context.Context, limit float64) error {
+	return r.queries.UpdateWeeklyLearnedLimit(ctx, sql.NullFloat64{Float64: limit, Valid: true})
+}
+
+func (r *PlanConfigRepository) ResetWeeklyWindowIfExpired(ctx context.Context, sessionStartTime time.Time) (bool, error) {
+	config, err := r.Get(ctx)
+	if err != nil {
+		return false, fmt.Errorf("failed to get plan config: %w", err)
+	}
+	if config == nil {
+		// No plan configured, nothing to reset
+		return false, nil
+	}
+
+	weeklyDuration := time.Duration(domain.WeeklyWindowHours) * time.Hour
+
+	// Reset if weekly_window_start_time is nil OR session started after window expired
+	if config.WeeklyWindowStartTime == nil || sessionStartTime.After(config.WeeklyWindowStartTime.Add(weeklyDuration)) {
+		if err := r.UpdateWeeklyWindowStartTime(ctx, sessionStartTime); err != nil {
+			return false, fmt.Errorf("failed to update weekly window start time: %w", err)
 		}
 		return true, nil
 	}

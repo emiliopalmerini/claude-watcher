@@ -41,7 +41,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 			WindowHours: planConfig.WindowHours,
 		}
 
-		// Get the token limit (learned or estimated)
+		// Get the 5-hour token limit (learned or estimated)
 		if planConfig.LearnedTokenLimit != nil {
 			usageStats.TokenLimit = *planConfig.LearnedTokenLimit
 			usageStats.IsLearned = true
@@ -49,7 +49,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 			usageStats.TokenLimit = preset.TokenEstimate
 		}
 
-		// Get rolling window usage
+		// Get 5-hour rolling window usage
 		if summary, err := s.planConfigRepo.GetRollingWindowSummary(ctx, planConfig.WindowHours); err == nil {
 			usageStats.TokensUsed = summary.TotalTokens
 
@@ -69,6 +69,33 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 
 			// Approximate minutes left (rolling window refreshes continuously)
 			usageStats.MinutesLeft = planConfig.WindowHours * 60
+		}
+
+		// Get the weekly token limit (learned or estimated)
+		if planConfig.WeeklyLearnedTokenLimit != nil {
+			usageStats.WeeklyTokenLimit = *planConfig.WeeklyLearnedTokenLimit
+			usageStats.WeeklyIsLearned = true
+		} else if preset, ok := domain.WeeklyPlanPresets[planConfig.PlanType]; ok {
+			usageStats.WeeklyTokenLimit = preset.TokenEstimate
+		}
+
+		// Get weekly rolling window usage
+		if weeklySummary, err := s.planConfigRepo.GetWeeklyWindowSummary(ctx); err == nil {
+			usageStats.WeeklyTokensUsed = weeklySummary.TotalTokens
+
+			// Calculate percentage
+			if usageStats.WeeklyTokenLimit > 0 {
+				usageStats.WeeklyUsagePercent = (weeklySummary.TotalTokens / usageStats.WeeklyTokenLimit) * 100
+			}
+
+			// Determine status
+			if usageStats.WeeklyUsagePercent >= 100 {
+				usageStats.WeeklyStatus = "EXCEEDED"
+			} else if usageStats.WeeklyUsagePercent >= 80 {
+				usageStats.WeeklyStatus = "WARNING"
+			} else {
+				usageStats.WeeklyStatus = "OK"
+			}
 		}
 
 		stats.UsageStats = usageStats

@@ -47,7 +47,7 @@ func (q *Queries) DeleteUsageLimit(ctx context.Context, id string) error {
 }
 
 const getPlanConfig = `-- name: GetPlanConfig :one
-SELECT id, plan_type, window_hours, learned_token_limit, learned_at, created_at, updated_at, window_start_time FROM plan_config WHERE id = 1
+SELECT id, plan_type, window_hours, learned_token_limit, learned_at, created_at, updated_at, window_start_time, weekly_window_start_time, weekly_learned_token_limit, weekly_learned_at FROM plan_config WHERE id = 1
 `
 
 func (q *Queries) GetPlanConfig(ctx context.Context) (PlanConfig, error) {
@@ -62,6 +62,9 @@ func (q *Queries) GetPlanConfig(ctx context.Context) (PlanConfig, error) {
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.WindowStartTime,
+		&i.WeeklyWindowStartTime,
+		&i.WeeklyLearnedTokenLimit,
+		&i.WeeklyLearnedAt,
 	)
 	return i, err
 }
@@ -108,6 +111,30 @@ func (q *Queries) GetUsageLimit(ctx context.Context, id string) (UsageLimit, err
 	return i, err
 }
 
+const getWeeklyWindowUsage = `-- name: GetWeeklyWindowUsage :one
+SELECT
+    CAST(COALESCE(SUM(m.token_cache_read + m.token_cache_write), 0) AS REAL) as total_tokens,
+    CAST(COALESCE(SUM(m.cost_estimate_usd), 0) AS REAL) as total_cost
+FROM sessions s
+JOIN session_metrics m ON s.id = m.session_id
+WHERE datetime(s.started_at) >= datetime((
+    SELECT COALESCE(weekly_window_start_time, datetime('now', '-168 hours'))
+    FROM plan_config WHERE id = 1
+))
+`
+
+type GetWeeklyWindowUsageRow struct {
+	TotalTokens float64 `json:"total_tokens"`
+	TotalCost   float64 `json:"total_cost"`
+}
+
+func (q *Queries) GetWeeklyWindowUsage(ctx context.Context) (GetWeeklyWindowUsageRow, error) {
+	row := q.db.QueryRowContext(ctx, getWeeklyWindowUsage)
+	var i GetWeeklyWindowUsageRow
+	err := row.Scan(&i.TotalTokens, &i.TotalCost)
+	return i, err
+}
+
 const listUsageLimits = `-- name: ListUsageLimits :many
 SELECT id, limit_value, warn_threshold, enabled, created_at, updated_at FROM usage_limits ORDER BY id
 `
@@ -150,6 +177,26 @@ WHERE id = 1
 
 func (q *Queries) UpdateLearnedLimit(ctx context.Context, learnedTokenLimit sql.NullFloat64) error {
 	_, err := q.db.ExecContext(ctx, updateLearnedLimit, learnedTokenLimit)
+	return err
+}
+
+const updateWeeklyLearnedLimit = `-- name: UpdateWeeklyLearnedLimit :exec
+UPDATE plan_config
+SET weekly_learned_token_limit = ?, weekly_learned_at = datetime('now'), updated_at = datetime('now')
+WHERE id = 1
+`
+
+func (q *Queries) UpdateWeeklyLearnedLimit(ctx context.Context, weeklyLearnedTokenLimit sql.NullFloat64) error {
+	_, err := q.db.ExecContext(ctx, updateWeeklyLearnedLimit, weeklyLearnedTokenLimit)
+	return err
+}
+
+const updateWeeklyWindowStartTime = `-- name: UpdateWeeklyWindowStartTime :exec
+UPDATE plan_config SET weekly_window_start_time = ?, updated_at = datetime('now') WHERE id = 1
+`
+
+func (q *Queries) UpdateWeeklyWindowStartTime(ctx context.Context, weeklyWindowStartTime sql.NullString) error {
+	_, err := q.db.ExecContext(ctx, updateWeeklyWindowStartTime, weeklyWindowStartTime)
 	return err
 }
 
