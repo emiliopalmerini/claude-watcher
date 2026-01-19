@@ -147,7 +147,7 @@ func planConfigFromRow(row sqlc.PlanConfig) *domain.PlanConfig {
 		config.LearnedTokenLimit = &row.LearnedTokenLimit.Float64
 	}
 	if row.LearnedAt.Valid {
-		t, _ := time.Parse(time.RFC3339, row.LearnedAt.String)
+		t := util.ParseTimeSQLite(row.LearnedAt.String)
 		config.LearnedAt = &t
 	}
 	return config

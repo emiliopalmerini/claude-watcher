@@ -54,6 +54,19 @@ func ParseTimeRFC3339(s string) time.Time {
 	return t
 }
 
+// ParseTimeSQLite parses a SQLite datetime or RFC3339 string to time.Time.
+// Handles "YYYY-MM-DD HH:MM:SS" (SQLite) and RFC3339 formats.
+// Returns zero time if parsing fails.
+func ParseTimeSQLite(s string) time.Time {
+	// Try SQLite datetime format first (most common from DB)
+	if t, err := time.Parse("2006-01-02 15:04:05", s); err == nil {
+		return t
+	}
+	// Fall back to RFC3339
+	t, _ := time.Parse(time.RFC3339, s)
+	return t
+}
+
 // GetStartDateForPeriod returns the start date for a given period as an RFC3339 string.
 // Supported periods: "today", "week", "month", "all" (or any other value for all time).
 func GetStartDateForPeriod(period string) string {
