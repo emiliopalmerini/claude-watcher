@@ -47,7 +47,7 @@ func (q *Queries) DeleteUsageLimit(ctx context.Context, id string) error {
 }
 
 const getPlanConfig = `-- name: GetPlanConfig :one
-SELECT id, plan_type, window_hours, learned_token_limit, learned_at, created_at, updated_at FROM plan_config WHERE id = 1
+SELECT id, plan_type, window_hours, learned_token_limit, learned_at, created_at, updated_at, window_start_time FROM plan_config WHERE id = 1
 `
 
 func (q *Queries) GetPlanConfig(ctx context.Context) (PlanConfig, error) {
@@ -61,6 +61,7 @@ func (q *Queries) GetPlanConfig(ctx context.Context) (PlanConfig, error) {
 		&i.LearnedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.WindowStartTime,
 	)
 	return i, err
 }
@@ -71,7 +72,10 @@ SELECT
     CAST(COALESCE(SUM(m.cost_estimate_usd), 0) AS REAL) as total_cost
 FROM sessions s
 JOIN session_metrics m ON s.id = m.session_id
-WHERE datetime(s.started_at) >= datetime('now', ? || ' hours')
+WHERE datetime(s.started_at) >= datetime((
+    SELECT COALESCE(window_start_time, datetime('now', ? || ' hours'))
+    FROM plan_config WHERE id = 1
+))
 `
 
 type GetRollingWindowUsageRow struct {
@@ -146,6 +150,15 @@ WHERE id = 1
 
 func (q *Queries) UpdateLearnedLimit(ctx context.Context, learnedTokenLimit sql.NullFloat64) error {
 	_, err := q.db.ExecContext(ctx, updateLearnedLimit, learnedTokenLimit)
+	return err
+}
+
+const updateWindowStartTime = `-- name: UpdateWindowStartTime :exec
+UPDATE plan_config SET window_start_time = ?, updated_at = datetime('now') WHERE id = 1
+`
+
+func (q *Queries) UpdateWindowStartTime(ctx context.Context, windowStartTime sql.NullString) error {
+	_, err := q.db.ExecContext(ctx, updateWindowStartTime, windowStartTime)
 	return err
 }
 

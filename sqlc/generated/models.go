@@ -38,6 +38,7 @@ type PlanConfig struct {
 	LearnedAt         sql.NullString  `json:"learned_at"`
 	CreatedAt         string          `json:"created_at"`
 	UpdatedAt         string          `json:"updated_at"`
+	WindowStartTime   sql.NullString  `json:"window_start_time"`
 }
 
 type Project struct {

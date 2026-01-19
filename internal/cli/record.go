@@ -144,6 +144,7 @@ func processRecordInput(hookInput *domain.HookInput) error {
 	commandRepo := turso.NewSessionCommandRepository(db)
 	pricingRepo := turso.NewPricingRepository(db)
 	qualityRepo := turso.NewSessionQualityRepository(db)
+	planConfigRepo := turso.NewPlanConfigRepository(db)
 
 	// Initialize transcript storage
 	transcriptStorage, err := storage.NewTranscriptStorage()
@@ -167,6 +168,15 @@ func processRecordInput(hookInput *domain.HookInput) error {
 	parsed, err := parser.ParseTranscript(hookInput.SessionID, hookInput.TranscriptPath)
 	if err != nil {
 		return fmt.Errorf("failed to parse transcript: %w", err)
+	}
+
+	// Reset usage window if expired
+	if parsed.StartedAt != nil {
+		if reset, err := planConfigRepo.ResetWindowIfExpired(ctx, *parsed.StartedAt); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to check window reset: %v\n", err)
+		} else if reset {
+			fmt.Println("Usage window reset")
+		}
 	}
 
 	// Store transcript copy

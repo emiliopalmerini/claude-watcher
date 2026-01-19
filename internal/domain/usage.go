@@ -19,6 +19,7 @@ type UsageSummary struct {
 type PlanConfig struct {
 	PlanType          string
 	WindowHours       int
+	WindowStartTime   *time.Time
 	LearnedTokenLimit *float64
 	LearnedAt         *time.Time
 	CreatedAt         time.Time

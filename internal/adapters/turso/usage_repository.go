@@ -150,5 +150,36 @@ func planConfigFromRow(row sqlc.PlanConfig) *domain.PlanConfig {
 		t := util.ParseTimeSQLite(row.LearnedAt.String)
 		config.LearnedAt = &t
 	}
+	if row.WindowStartTime.Valid {
+		t := util.ParseTimeSQLite(row.WindowStartTime.String)
+		config.WindowStartTime = &t
+	}
 	return config
+}
+
+func (r *PlanConfigRepository) UpdateWindowStartTime(ctx context.Context, t time.Time) error {
+	return r.queries.UpdateWindowStartTime(ctx, sql.NullString{String: t.Format(time.RFC3339), Valid: true})
+}
+
+func (r *PlanConfigRepository) ResetWindowIfExpired(ctx context.Context, sessionStartTime time.Time) (bool, error) {
+	config, err := r.Get(ctx)
+	if err != nil {
+		return false, fmt.Errorf("failed to get plan config: %w", err)
+	}
+	if config == nil {
+		// No plan configured, nothing to reset
+		return false, nil
+	}
+
+	windowDuration := time.Duration(config.WindowHours) * time.Hour
+
+	// Reset if window_start_time is nil OR session started after window expired
+	if config.WindowStartTime == nil || sessionStartTime.After(config.WindowStartTime.Add(windowDuration)) {
+		if err := r.UpdateWindowStartTime(ctx, sessionStartTime); err != nil {
+			return false, fmt.Errorf("failed to update window start time: %w", err)
+		}
+		return true, nil
+	}
+
+	return false, nil
 }

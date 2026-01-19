@@ -22,7 +22,13 @@ SELECT
     CAST(COALESCE(SUM(m.cost_estimate_usd), 0) AS REAL) as total_cost
 FROM sessions s
 JOIN session_metrics m ON s.id = m.session_id
-WHERE datetime(s.started_at) >= datetime('now', ? || ' hours');
+WHERE datetime(s.started_at) >= datetime((
+    SELECT COALESCE(window_start_time, datetime('now', ? || ' hours'))
+    FROM plan_config WHERE id = 1
+));
+
+-- name: UpdateWindowStartTime :exec
+UPDATE plan_config SET window_start_time = ?, updated_at = datetime('now') WHERE id = 1;
 
 -- name: UpsertPlanConfig :exec
 INSERT INTO plan_config (id, plan_type, window_hours, learned_token_limit, learned_at, updated_at)
