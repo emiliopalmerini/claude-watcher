@@ -179,21 +179,11 @@ func (r *PlanConfigRepository) ResetWindowIfExpired(ctx context.Context, session
 		return false, fmt.Errorf("failed to get plan config: %w", err)
 	}
 	if config == nil {
-		// No plan configured, nothing to reset
 		return false, nil
 	}
 
-	windowDuration := time.Duration(config.WindowHours) * time.Hour
-
-	// Reset if window_start_time is nil OR session started after window expired
-	if config.WindowStartTime == nil || sessionStartTime.After(config.WindowStartTime.Add(windowDuration)) {
-		if err := r.UpdateWindowStartTime(ctx, sessionStartTime); err != nil {
-			return false, fmt.Errorf("failed to update window start time: %w", err)
-		}
-		return true, nil
-	}
-
-	return false, nil
+	windowHours := config.WindowHours
+	return r.resetWindowIfExpired(ctx, sessionStartTime, config.WindowStartTime, windowHours, r.UpdateWindowStartTime)
 }
 
 // Weekly window methods
@@ -223,16 +213,26 @@ func (r *PlanConfigRepository) ResetWeeklyWindowIfExpired(ctx context.Context, s
 		return false, fmt.Errorf("failed to get plan config: %w", err)
 	}
 	if config == nil {
-		// No plan configured, nothing to reset
 		return false, nil
 	}
 
-	weeklyDuration := time.Duration(domain.WeeklyWindowHours) * time.Hour
+	return r.resetWindowIfExpired(ctx, sessionStartTime, config.WeeklyWindowStartTime, domain.WeeklyWindowHours, r.UpdateWeeklyWindowStartTime)
+}
 
-	// Reset if weekly_window_start_time is nil OR session started after window expired
-	if config.WeeklyWindowStartTime == nil || sessionStartTime.After(config.WeeklyWindowStartTime.Add(weeklyDuration)) {
-		if err := r.UpdateWeeklyWindowStartTime(ctx, sessionStartTime); err != nil {
-			return false, fmt.Errorf("failed to update weekly window start time: %w", err)
+// resetWindowIfExpired is a helper that handles the common logic for resetting time windows.
+// It resets if windowStartTime is nil OR sessionStartTime is after the window expired.
+func (r *PlanConfigRepository) resetWindowIfExpired(
+	ctx context.Context,
+	sessionStartTime time.Time,
+	windowStartTime *time.Time,
+	windowHours int,
+	updateFn func(context.Context, time.Time) error,
+) (bool, error) {
+	windowDuration := time.Duration(windowHours) * time.Hour
+
+	if windowStartTime == nil || sessionStartTime.After(windowStartTime.Add(windowDuration)) {
+		if err := updateFn(ctx, sessionStartTime); err != nil {
+			return false, fmt.Errorf("failed to update window start time: %w", err)
 		}
 		return true, nil
 	}
