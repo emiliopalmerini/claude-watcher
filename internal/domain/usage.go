@@ -73,3 +73,31 @@ const (
 	LimitDailyCost    = "daily_cost"
 	LimitWeeklyCost   = "weekly_cost"
 )
+
+// Usage status constants
+const (
+	StatusOK       = "OK"
+	StatusWarning  = "WARNING"
+	StatusExceeded = "EXCEEDED"
+)
+
+// DefaultWarnThreshold is the default warning threshold (80%)
+const DefaultWarnThreshold = 0.8
+
+// GetStatus returns the usage status based on percentage and warning threshold.
+// percentage should be a ratio (e.g., 0.5 for 50%, 1.0 for 100%)
+func GetStatus(percentage, warnThreshold float64) string {
+	if percentage >= 1.0 {
+		return StatusExceeded
+	}
+	if percentage >= warnThreshold {
+		return StatusWarning
+	}
+	return StatusOK
+}
+
+// GetStatusFromPercent returns the usage status from a percentage value (0-100).
+// Uses the default warning threshold of 80%.
+func GetStatusFromPercent(percent float64) string {
+	return GetStatus(percent/100, DefaultWarnThreshold)
+}

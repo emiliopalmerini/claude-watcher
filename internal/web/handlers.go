@@ -59,13 +59,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// Determine status
-			if usageStats.UsagePercent >= 100 {
-				usageStats.Status = "EXCEEDED"
-			} else if usageStats.UsagePercent >= 80 {
-				usageStats.Status = "WARNING"
-			} else {
-				usageStats.Status = "OK"
-			}
+			usageStats.Status = domain.GetStatusFromPercent(usageStats.UsagePercent)
 
 			// Approximate minutes left (rolling window refreshes continuously)
 			usageStats.MinutesLeft = planConfig.WindowHours * 60
@@ -89,13 +83,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// Determine status
-			if usageStats.WeeklyUsagePercent >= 100 {
-				usageStats.WeeklyStatus = "EXCEEDED"
-			} else if usageStats.WeeklyUsagePercent >= 80 {
-				usageStats.WeeklyStatus = "WARNING"
-			} else {
-				usageStats.WeeklyStatus = "OK"
-			}
+			usageStats.WeeklyStatus = domain.GetStatusFromPercent(usageStats.WeeklyUsagePercent)
 		}
 
 		stats.UsageStats = usageStats

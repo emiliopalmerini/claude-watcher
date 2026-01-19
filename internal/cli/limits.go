@@ -250,7 +250,7 @@ func runLimitsList(cmd *cobra.Command, args []string) error {
 	if limit > 0 {
 		percentage = summary.TotalTokens / limit
 	}
-	status := getStatus(percentage, 0.8)
+	status := domain.GetStatus(percentage, 0.8)
 
 	fmt.Printf("5-Hour Window:\n")
 	fmt.Printf("  Tokens: %s", util.FormatTokens(summary.TotalTokens))
@@ -284,7 +284,7 @@ func runLimitsList(cmd *cobra.Command, args []string) error {
 	if weeklyLimit > 0 {
 		weeklyPercentage = weeklySummary.TotalTokens / weeklyLimit
 	}
-	weeklyStatus := getStatus(weeklyPercentage, 0.8)
+	weeklyStatus := domain.GetStatus(weeklyPercentage, 0.8)
 
 	fmt.Printf("\nWeekly Window (7 days):\n")
 	fmt.Printf("  Tokens: %s", util.FormatTokens(weeklySummary.TotalTokens))
@@ -345,7 +345,7 @@ func runLimitsCheck(cmd *cobra.Command, args []string) error {
 	if limit > 0 {
 		percentage = summary.TotalTokens / limit
 	}
-	status := getStatus(percentage, 0.8)
+	status := domain.GetStatus(percentage, 0.8)
 
 	fmt.Printf("5-Hour: %s", util.FormatTokens(summary.TotalTokens))
 	if limit > 0 {
@@ -370,7 +370,7 @@ func runLimitsCheck(cmd *cobra.Command, args []string) error {
 	if weeklyLimit > 0 {
 		weeklyPercentage = weeklySummary.TotalTokens / weeklyLimit
 	}
-	weeklyStatus := getStatus(weeklyPercentage, 0.8)
+	weeklyStatus := domain.GetStatus(weeklyPercentage, 0.8)
 
 	fmt.Printf("Weekly: %s", util.FormatTokens(weeklySummary.TotalTokens))
 	if weeklyLimit > 0 {
@@ -466,14 +466,4 @@ func isValidLimitType(t string) bool {
 		t == domain.LimitWeeklyTokens ||
 		t == domain.LimitDailyCost ||
 		t == domain.LimitWeeklyCost
-}
-
-func getStatus(percentage, warnThreshold float64) string {
-	if percentage >= 1.0 {
-		return "EXCEEDED"
-	}
-	if percentage >= warnThreshold {
-		return "WARNING"
-	}
-	return "OK"
 }
