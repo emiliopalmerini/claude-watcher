@@ -23,14 +23,14 @@ type DashboardStats struct {
 }
 
 type UsageLimitStats struct {
-	PlanType       string  // pro, max_5x, max_20x
-	WindowHours    int     // Rolling window size (typically 5)
-	TokensUsed     float64 // Current tokens in window
-	TokenLimit     float64 // Limit (learned or estimated)
-	UsagePercent   float64 // 0-100+
-	Status         string  // OK, WARNING, EXCEEDED
-	IsLearned      bool    // true if limit is learned, false if estimated
-	MinutesLeft    int     // Minutes until window resets (approx)
+	PlanType     string  // pro, max_5x, max_20x
+	WindowHours  int     // Rolling window size (typically 5)
+	TokensUsed   float64 // Current tokens in window
+	TokenLimit   float64 // Limit (learned or estimated)
+	UsagePercent float64 // 0-100+
+	Status       string  // OK, WARNING, EXCEEDED
+	IsLearned    bool    // true if limit is learned, false if estimated
+	MinutesLeft  int     // Minutes until window resets (approx)
 }
 
 type ToolUsage struct {

@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/emiliopalmerini/mclaude/internal/adapters/turso"
+	"github.com/emiliopalmerini/mclaude/internal/util"
 	sqlc "github.com/emiliopalmerini/mclaude/sqlc/generated"
 )
 
@@ -90,7 +91,7 @@ func runExportSessions(cmd *cobra.Command, args []string) error {
 		}
 
 		sessions, err = queries.ListSessionsByExperiment(ctx, sqlc.ListSessionsByExperimentParams{
-			ExperimentID: toNullString(exp.ID),
+			ExperimentID: util.NullString(exp.ID),
 			Limit:        int64(exportLimit),
 		})
 		if err != nil {

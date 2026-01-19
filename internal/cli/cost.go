@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"os"
 	"text/tabwriter"
@@ -11,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/emiliopalmerini/mclaude/internal/adapters/turso"
+	"github.com/emiliopalmerini/mclaude/internal/util"
 	sqlc "github.com/emiliopalmerini/mclaude/sqlc/generated"
 )
 
@@ -156,10 +156,10 @@ func runCostSet(cmd *cobra.Command, args []string) error {
 			IsDefault:        existing.IsDefault,
 		}
 		if costCacheRead > 0 {
-			params.CacheReadPerMillion = toNullFloat64(&costCacheRead)
+			params.CacheReadPerMillion = util.NullFloat64Zero(&costCacheRead)
 		}
 		if costCacheWrite > 0 {
-			params.CacheWritePerMillion = toNullFloat64(&costCacheWrite)
+			params.CacheWritePerMillion = util.NullFloat64Zero(&costCacheWrite)
 		}
 
 		if err := queries.UpdateModelPricing(ctx, params); err != nil {
@@ -176,10 +176,10 @@ func runCostSet(cmd *cobra.Command, args []string) error {
 			CreatedAt:        time.Now().UTC().Format(time.RFC3339),
 		}
 		if costCacheRead > 0 {
-			params.CacheReadPerMillion = toNullFloat64(&costCacheRead)
+			params.CacheReadPerMillion = util.NullFloat64Zero(&costCacheRead)
 		}
 		if costCacheWrite > 0 {
-			params.CacheWritePerMillion = toNullFloat64(&costCacheWrite)
+			params.CacheWritePerMillion = util.NullFloat64Zero(&costCacheWrite)
 		}
 
 		// Check if this is the first pricing - make it default
@@ -241,11 +241,4 @@ func runCostDelete(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("Deleted pricing for %s\n", modelID)
 	return nil
-}
-
-func toNullFloat64(f *float64) sql.NullFloat64 {
-	if f == nil || *f == 0 {
-		return sql.NullFloat64{}
-	}
-	return sql.NullFloat64{Float64: *f, Valid: true}
 }

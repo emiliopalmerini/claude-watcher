@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"os"
 	"text/tabwriter"
-	"time"
 
 	"github.com/spf13/cobra"
 
 	"github.com/emiliopalmerini/mclaude/internal/adapters/turso"
+	"github.com/emiliopalmerini/mclaude/internal/util"
 	sqlc "github.com/emiliopalmerini/mclaude/sqlc/generated"
 )
 
@@ -127,7 +127,7 @@ func runSessionsList(cmd *cobra.Command, args []string) error {
 		}
 
 		// Format date
-		date := formatDateTime(s.CreatedAt)
+		date := util.FormatDateTime(s.CreatedAt)
 
 		// Format metrics
 		turns := "-"
@@ -136,7 +136,7 @@ func runSessionsList(cmd *cobra.Command, args []string) error {
 		if m != nil {
 			turns = fmt.Sprintf("%d", m.TurnCount)
 			totalTokens := m.TokenInput + m.TokenOutput
-			tokens = formatNumber(totalTokens)
+			tokens = util.FormatNumber(totalTokens)
 			if m.CostEstimateUsd.Valid {
 				cost = fmt.Sprintf("$%.4f", m.CostEstimateUsd.Float64)
 			}
@@ -149,12 +149,4 @@ func runSessionsList(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("\nShowing %d session(s)\n", len(sessions))
 	return nil
-}
-
-func formatDateTime(s string) string {
-	t, err := time.Parse(time.RFC3339, s)
-	if err != nil {
-		return s
-	}
-	return t.Format("2006-01-02 15:04")
 }

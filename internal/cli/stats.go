@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/emiliopalmerini/mclaude/internal/adapters/turso"
+	"github.com/emiliopalmerini/mclaude/internal/util"
 	sqlc "github.com/emiliopalmerini/mclaude/sqlc/generated"
 )
 
@@ -79,7 +80,7 @@ func runStats(cmd *cobra.Command, args []string) error {
 		}
 
 		row, err := queries.GetAggregateStatsByExperiment(ctx, sqlc.GetAggregateStatsByExperimentParams{
-			ExperimentID: toNullString(exp.ID),
+			ExperimentID: util.NullString(exp.ID),
 			CreatedAt:    startDate,
 		})
 		if err != nil {
@@ -128,77 +129,45 @@ func runStats(cmd *cobra.Command, args []string) error {
 func statsFromRow(row sqlc.GetAggregateStatsRow) Stats {
 	return Stats{
 		SessionCount:           row.SessionCount,
-		TotalUserMessages:      toInt64(row.TotalUserMessages),
-		TotalAssistantMessages: toInt64(row.TotalAssistantMessages),
-		TotalTurns:             toInt64(row.TotalTurns),
-		TotalTokenInput:        toInt64(row.TotalTokenInput),
-		TotalTokenOutput:       toInt64(row.TotalTokenOutput),
-		TotalTokenCacheRead:    toInt64(row.TotalTokenCacheRead),
-		TotalTokenCacheWrite:   toInt64(row.TotalTokenCacheWrite),
-		TotalCostUsd:           toFloat64(row.TotalCostUsd),
-		TotalErrors:            toInt64(row.TotalErrors),
+		TotalUserMessages:      util.ToInt64(row.TotalUserMessages),
+		TotalAssistantMessages: util.ToInt64(row.TotalAssistantMessages),
+		TotalTurns:             util.ToInt64(row.TotalTurns),
+		TotalTokenInput:        util.ToInt64(row.TotalTokenInput),
+		TotalTokenOutput:       util.ToInt64(row.TotalTokenOutput),
+		TotalTokenCacheRead:    util.ToInt64(row.TotalTokenCacheRead),
+		TotalTokenCacheWrite:   util.ToInt64(row.TotalTokenCacheWrite),
+		TotalCostUsd:           util.ToFloat64(row.TotalCostUsd),
+		TotalErrors:            util.ToInt64(row.TotalErrors),
 	}
 }
 
 func statsFromExperimentRow(row sqlc.GetAggregateStatsByExperimentRow) Stats {
 	return Stats{
 		SessionCount:           row.SessionCount,
-		TotalUserMessages:      toInt64(row.TotalUserMessages),
-		TotalAssistantMessages: toInt64(row.TotalAssistantMessages),
-		TotalTurns:             toInt64(row.TotalTurns),
-		TotalTokenInput:        toInt64(row.TotalTokenInput),
-		TotalTokenOutput:       toInt64(row.TotalTokenOutput),
-		TotalTokenCacheRead:    toInt64(row.TotalTokenCacheRead),
-		TotalTokenCacheWrite:   toInt64(row.TotalTokenCacheWrite),
-		TotalCostUsd:           toFloat64(row.TotalCostUsd),
-		TotalErrors:            toInt64(row.TotalErrors),
+		TotalUserMessages:      util.ToInt64(row.TotalUserMessages),
+		TotalAssistantMessages: util.ToInt64(row.TotalAssistantMessages),
+		TotalTurns:             util.ToInt64(row.TotalTurns),
+		TotalTokenInput:        util.ToInt64(row.TotalTokenInput),
+		TotalTokenOutput:       util.ToInt64(row.TotalTokenOutput),
+		TotalTokenCacheRead:    util.ToInt64(row.TotalTokenCacheRead),
+		TotalTokenCacheWrite:   util.ToInt64(row.TotalTokenCacheWrite),
+		TotalCostUsd:           util.ToFloat64(row.TotalCostUsd),
+		TotalErrors:            util.ToInt64(row.TotalErrors),
 	}
 }
 
 func statsFromProjectRow(row sqlc.GetAggregateStatsByProjectRow) Stats {
 	return Stats{
 		SessionCount:           row.SessionCount,
-		TotalUserMessages:      toInt64(row.TotalUserMessages),
-		TotalAssistantMessages: toInt64(row.TotalAssistantMessages),
-		TotalTurns:             toInt64(row.TotalTurns),
-		TotalTokenInput:        toInt64(row.TotalTokenInput),
-		TotalTokenOutput:       toInt64(row.TotalTokenOutput),
-		TotalTokenCacheRead:    toInt64(row.TotalTokenCacheRead),
-		TotalTokenCacheWrite:   toInt64(row.TotalTokenCacheWrite),
-		TotalCostUsd:           toFloat64(row.TotalCostUsd),
-		TotalErrors:            toInt64(row.TotalErrors),
-	}
-}
-
-func toInt64(v interface{}) int64 {
-	if v == nil {
-		return 0
-	}
-	switch n := v.(type) {
-	case int64:
-		return n
-	case int:
-		return int64(n)
-	case float64:
-		return int64(n)
-	default:
-		return 0
-	}
-}
-
-func toFloat64(v interface{}) float64 {
-	if v == nil {
-		return 0
-	}
-	switch n := v.(type) {
-	case float64:
-		return n
-	case int64:
-		return float64(n)
-	case int:
-		return float64(n)
-	default:
-		return 0
+		TotalUserMessages:      util.ToInt64(row.TotalUserMessages),
+		TotalAssistantMessages: util.ToInt64(row.TotalAssistantMessages),
+		TotalTurns:             util.ToInt64(row.TotalTurns),
+		TotalTokenInput:        util.ToInt64(row.TotalTokenInput),
+		TotalTokenOutput:       util.ToInt64(row.TotalTokenOutput),
+		TotalTokenCacheRead:    util.ToInt64(row.TotalTokenCacheRead),
+		TotalTokenCacheWrite:   util.ToInt64(row.TotalTokenCacheWrite),
+		TotalCostUsd:           util.ToFloat64(row.TotalCostUsd),
+		TotalErrors:            util.ToInt64(row.TotalErrors),
 	}
 }
 
@@ -250,20 +219,20 @@ func printStats(stats Stats, filterLabel, period, activeExp string, tools []sqlc
 	fmt.Printf("  Sessions\n")
 	fmt.Printf("  --------\n")
 	fmt.Printf("  Total:             %d\n", stats.SessionCount)
-	fmt.Printf("  Turns:             %s\n", formatNumber(stats.TotalTurns))
-	fmt.Printf("  User messages:     %s\n", formatNumber(stats.TotalUserMessages))
-	fmt.Printf("  Assistant msgs:    %s\n", formatNumber(stats.TotalAssistantMessages))
+	fmt.Printf("  Turns:             %s\n", util.FormatNumber(stats.TotalTurns))
+	fmt.Printf("  User messages:     %s\n", util.FormatNumber(stats.TotalUserMessages))
+	fmt.Printf("  Assistant msgs:    %s\n", util.FormatNumber(stats.TotalAssistantMessages))
 	fmt.Printf("  Errors:            %d\n", stats.TotalErrors)
 	fmt.Println()
 
 	fmt.Printf("  Tokens\n")
 	fmt.Printf("  ------\n")
-	fmt.Printf("  Input:             %s\n", formatNumber(stats.TotalTokenInput))
-	fmt.Printf("  Output:            %s\n", formatNumber(stats.TotalTokenOutput))
-	fmt.Printf("  Cache read:        %s\n", formatNumber(stats.TotalTokenCacheRead))
-	fmt.Printf("  Cache write:       %s\n", formatNumber(stats.TotalTokenCacheWrite))
+	fmt.Printf("  Input:             %s\n", util.FormatNumber(stats.TotalTokenInput))
+	fmt.Printf("  Output:            %s\n", util.FormatNumber(stats.TotalTokenOutput))
+	fmt.Printf("  Cache read:        %s\n", util.FormatNumber(stats.TotalTokenCacheRead))
+	fmt.Printf("  Cache write:       %s\n", util.FormatNumber(stats.TotalTokenCacheWrite))
 	totalTokens := stats.TotalTokenInput + stats.TotalTokenOutput
-	fmt.Printf("  Total:             %s\n", formatNumber(totalTokens))
+	fmt.Printf("  Total:             %s\n", util.FormatNumber(totalTokens))
 	fmt.Println()
 
 	fmt.Printf("  Cost\n")
@@ -279,18 +248,8 @@ func printStats(stats Stats, filterLabel, period, activeExp string, tools []sqlc
 			if tool.TotalInvocations.Valid {
 				invocations = int64(tool.TotalInvocations.Float64)
 			}
-			fmt.Printf("  %-18s %s calls\n", tool.ToolName, formatNumber(invocations))
+			fmt.Printf("  %-18s %s calls\n", tool.ToolName, util.FormatNumber(invocations))
 		}
 		fmt.Println()
 	}
-}
-
-func formatNumber(n int64) string {
-	if n < 1000 {
-		return fmt.Sprintf("%d", n)
-	}
-	if n < 1000000 {
-		return fmt.Sprintf("%.1fK", float64(n)/1000)
-	}
-	return fmt.Sprintf("%.1fM", float64(n)/1000000)
 }

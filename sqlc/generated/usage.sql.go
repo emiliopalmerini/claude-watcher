@@ -37,28 +37,6 @@ func (q *Queries) CreateUsageLimit(ctx context.Context, arg CreateUsageLimitPara
 	return err
 }
 
-const createUsageMetric = `-- name: CreateUsageMetric :exec
-INSERT INTO usage_metrics (metric_name, value, attributes, recorded_at)
-VALUES (?, ?, ?, ?)
-`
-
-type CreateUsageMetricParams struct {
-	MetricName string         `json:"metric_name"`
-	Value      float64        `json:"value"`
-	Attributes sql.NullString `json:"attributes"`
-	RecordedAt string         `json:"recorded_at"`
-}
-
-func (q *Queries) CreateUsageMetric(ctx context.Context, arg CreateUsageMetricParams) error {
-	_, err := q.db.ExecContext(ctx, createUsageMetric,
-		arg.MetricName,
-		arg.Value,
-		arg.Attributes,
-		arg.RecordedAt,
-	)
-	return err
-}
-
 const deleteUsageLimit = `-- name: DeleteUsageLimit :exec
 DELETE FROM usage_limits WHERE id = ?
 `
@@ -66,38 +44,6 @@ DELETE FROM usage_limits WHERE id = ?
 func (q *Queries) DeleteUsageLimit(ctx context.Context, id string) error {
 	_, err := q.db.ExecContext(ctx, deleteUsageLimit, id)
 	return err
-}
-
-const deleteUsageMetricsBefore = `-- name: DeleteUsageMetricsBefore :execrows
-DELETE FROM usage_metrics WHERE recorded_at < ?
-`
-
-func (q *Queries) DeleteUsageMetricsBefore(ctx context.Context, recordedAt string) (int64, error) {
-	result, err := q.db.ExecContext(ctx, deleteUsageMetricsBefore, recordedAt)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected()
-}
-
-const getDailyUsageSummary = `-- name: GetDailyUsageSummary :one
-SELECT
-    CAST(COALESCE(SUM(CASE WHEN metric_name = 'claude_code.token.usage' THEN value ELSE 0 END), 0) AS REAL) as total_tokens,
-    CAST(COALESCE(SUM(CASE WHEN metric_name = 'claude_code.cost.usage' THEN value ELSE 0 END), 0) AS REAL) as total_cost
-FROM usage_metrics
-WHERE recorded_at >= date('now', 'start of day')
-`
-
-type GetDailyUsageSummaryRow struct {
-	TotalTokens float64 `json:"total_tokens"`
-	TotalCost   float64 `json:"total_cost"`
-}
-
-func (q *Queries) GetDailyUsageSummary(ctx context.Context) (GetDailyUsageSummaryRow, error) {
-	row := q.db.QueryRowContext(ctx, getDailyUsageSummary)
-	var i GetDailyUsageSummaryRow
-	err := row.Scan(&i.TotalTokens, &i.TotalCost)
-	return i, err
 }
 
 const getPlanConfig = `-- name: GetPlanConfig :one
@@ -121,10 +67,11 @@ func (q *Queries) GetPlanConfig(ctx context.Context) (PlanConfig, error) {
 
 const getRollingWindowUsage = `-- name: GetRollingWindowUsage :one
 SELECT
-    CAST(COALESCE(SUM(CASE WHEN metric_name = 'claude_code.token.usage' THEN value ELSE 0 END), 0) AS REAL) as total_tokens,
-    CAST(COALESCE(SUM(CASE WHEN metric_name = 'claude_code.cost.usage' THEN value ELSE 0 END), 0) AS REAL) as total_cost
-FROM usage_metrics
-WHERE recorded_at >= datetime('now', ? || ' hours')
+    CAST(COALESCE(SUM(m.token_cache_read + m.token_cache_write), 0) AS REAL) as total_tokens,
+    CAST(COALESCE(SUM(m.cost_estimate_usd), 0) AS REAL) as total_cost
+FROM sessions s
+JOIN session_metrics m ON s.id = m.session_id
+WHERE s.started_at >= datetime('now', ? || ' hours')
 `
 
 type GetRollingWindowUsageRow struct {
@@ -137,86 +84,6 @@ func (q *Queries) GetRollingWindowUsage(ctx context.Context, dollar_1 sql.NullSt
 	var i GetRollingWindowUsageRow
 	err := row.Scan(&i.TotalTokens, &i.TotalCost)
 	return i, err
-}
-
-const getTokenUsageByType = `-- name: GetTokenUsageByType :many
-SELECT
-    json_extract(attributes, '$.type') as token_type,
-    SUM(value) as total
-FROM usage_metrics
-WHERE metric_name = 'claude_code.token.usage'
-  AND recorded_at >= ?
-GROUP BY token_type
-`
-
-type GetTokenUsageByTypeRow struct {
-	TokenType interface{}     `json:"token_type"`
-	Total     sql.NullFloat64 `json:"total"`
-}
-
-func (q *Queries) GetTokenUsageByType(ctx context.Context, recordedAt string) ([]GetTokenUsageByTypeRow, error) {
-	rows, err := q.db.QueryContext(ctx, getTokenUsageByType, recordedAt)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []GetTokenUsageByTypeRow{}
-	for rows.Next() {
-		var i GetTokenUsageByTypeRow
-		if err := rows.Scan(&i.TokenType, &i.Total); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const getUsageForPeriod = `-- name: GetUsageForPeriod :many
-SELECT
-    metric_name,
-    SUM(value) as total_value
-FROM usage_metrics
-WHERE recorded_at >= ? AND recorded_at < ?
-GROUP BY metric_name
-`
-
-type GetUsageForPeriodParams struct {
-	RecordedAt   string `json:"recorded_at"`
-	RecordedAt_2 string `json:"recorded_at_2"`
-}
-
-type GetUsageForPeriodRow struct {
-	MetricName string          `json:"metric_name"`
-	TotalValue sql.NullFloat64 `json:"total_value"`
-}
-
-func (q *Queries) GetUsageForPeriod(ctx context.Context, arg GetUsageForPeriodParams) ([]GetUsageForPeriodRow, error) {
-	rows, err := q.db.QueryContext(ctx, getUsageForPeriod, arg.RecordedAt, arg.RecordedAt_2)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []GetUsageForPeriodRow{}
-	for rows.Next() {
-		var i GetUsageForPeriodRow
-		if err := rows.Scan(&i.MetricName, &i.TotalValue); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
 
 const getUsageLimit = `-- name: GetUsageLimit :one
@@ -234,26 +101,6 @@ func (q *Queries) GetUsageLimit(ctx context.Context, id string) (UsageLimit, err
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
-	return i, err
-}
-
-const getWeeklyUsageSummary = `-- name: GetWeeklyUsageSummary :one
-SELECT
-    CAST(COALESCE(SUM(CASE WHEN metric_name = 'claude_code.token.usage' THEN value ELSE 0 END), 0) AS REAL) as total_tokens,
-    CAST(COALESCE(SUM(CASE WHEN metric_name = 'claude_code.cost.usage' THEN value ELSE 0 END), 0) AS REAL) as total_cost
-FROM usage_metrics
-WHERE recorded_at >= date('now', 'weekday 0', '-7 days')
-`
-
-type GetWeeklyUsageSummaryRow struct {
-	TotalTokens float64 `json:"total_tokens"`
-	TotalCost   float64 `json:"total_cost"`
-}
-
-func (q *Queries) GetWeeklyUsageSummary(ctx context.Context) (GetWeeklyUsageSummaryRow, error) {
-	row := q.db.QueryRowContext(ctx, getWeeklyUsageSummary)
-	var i GetWeeklyUsageSummaryRow
-	err := row.Scan(&i.TotalTokens, &i.TotalCost)
 	return i, err
 }
 

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/emiliopalmerini/mclaude/internal/domain"
+	"github.com/emiliopalmerini/mclaude/internal/util"
 	sqlc "github.com/emiliopalmerini/mclaude/sqlc/generated"
 )
 
@@ -67,7 +68,7 @@ func (r *SessionQualityRepository) GetBySessionID(ctx context.Context, sessionID
 
 	quality := &domain.SessionQuality{
 		SessionID: row.SessionID,
-		CreatedAt: parseTime(row.CreatedAt),
+		CreatedAt: util.ParseTimeRFC3339(row.CreatedAt),
 	}
 
 	if row.OverallRating.Valid {
@@ -107,9 +108,4 @@ func (r *SessionQualityRepository) Delete(ctx context.Context, sessionID string)
 
 func (r *SessionQualityRepository) ListUnreviewed(ctx context.Context, limit int) ([]string, error) {
 	return r.queries.ListUnreviewedSessionIDs(ctx, int64(limit))
-}
-
-func parseTime(s string) time.Time {
-	t, _ := time.Parse(time.RFC3339, s)
-	return t
 }

@@ -2,15 +2,6 @@ package domain
 
 import "time"
 
-type UsageMetric struct {
-	ID         int64
-	MetricName string
-	Value      float64
-	Attributes *string
-	RecordedAt time.Time
-	CreatedAt  time.Time
-}
-
 type UsageLimit struct {
 	ID            string
 	LimitValue    float64
@@ -45,9 +36,9 @@ const (
 // Plan presets (messages per 5 hours - tokens not documented)
 // These are rough estimates based on documented message limits
 var PlanPresets = map[string]struct {
-	Name            string
+	Name              string
 	MessagesPerWindow int
-	TokenEstimate   float64 // Rough estimate: ~3K tokens per message avg
+	TokenEstimate     float64 // Rough estimate: ~3K tokens per message avg
 }{
 	PlanPro:    {Name: "Pro", MessagesPerWindow: 45, TokenEstimate: 135000},
 	PlanMax5x:  {Name: "Max 5x", MessagesPerWindow: 225, TokenEstimate: 675000},
@@ -60,11 +51,4 @@ const (
 	LimitWeeklyTokens = "weekly_tokens"
 	LimitDailyCost    = "daily_cost"
 	LimitWeeklyCost   = "weekly_cost"
-)
-
-// Metric name constants (from Claude Code OTEL)
-const (
-	MetricTokenUsage   = "claude_code.token.usage"
-	MetricCostUsage    = "claude_code.cost.usage"
-	MetricSessionCount = "claude_code.session.count"
 )

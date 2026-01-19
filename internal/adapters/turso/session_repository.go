@@ -8,6 +8,7 @@ import (
 
 	"github.com/emiliopalmerini/mclaude/internal/domain"
 	"github.com/emiliopalmerini/mclaude/internal/ports"
+	"github.com/emiliopalmerini/mclaude/internal/util"
 	"github.com/emiliopalmerini/mclaude/sqlc/generated"
 )
 
@@ -40,9 +41,9 @@ func (r *SessionRepository) Create(ctx context.Context, session *domain.Session)
 	return r.queries.CreateSession(ctx, sqlc.CreateSessionParams{
 		ID:                   session.ID,
 		ProjectID:            session.ProjectID,
-		ExperimentID:         nullString(session.ExperimentID),
+		ExperimentID:         util.NullStringPtr(session.ExperimentID),
 		TranscriptPath:       session.TranscriptPath,
-		TranscriptStoredPath: nullString(session.TranscriptStoredPath),
+		TranscriptStoredPath: util.NullStringPtr(session.TranscriptStoredPath),
 		Cwd:                  session.Cwd,
 		PermissionMode:       session.PermissionMode,
 		ExitReason:           session.ExitReason,
@@ -80,7 +81,7 @@ func (r *SessionRepository) List(ctx context.Context, opts ports.ListSessionsOpt
 		})
 	} else if opts.ExperimentID != nil {
 		rows, err = r.queries.ListSessionsByExperiment(ctx, sqlc.ListSessionsByExperimentParams{
-			ExperimentID: nullString(opts.ExperimentID),
+			ExperimentID: util.NullStringPtr(opts.ExperimentID),
 			Limit:        limit,
 		})
 	} else {
@@ -111,7 +112,7 @@ func (r *SessionRepository) DeleteByProject(ctx context.Context, projectID strin
 }
 
 func (r *SessionRepository) DeleteByExperiment(ctx context.Context, experimentID string) (int64, error) {
-	return r.queries.DeleteSessionsByExperiment(ctx, nullString(&experimentID))
+	return r.queries.DeleteSessionsByExperiment(ctx, util.NullStringPtr(&experimentID))
 }
 
 func sessionFromRow(row sqlc.Session) *domain.Session {
@@ -135,9 +136,9 @@ func sessionFromRow(row sqlc.Session) *domain.Session {
 	return &domain.Session{
 		ID:                   row.ID,
 		ProjectID:            row.ProjectID,
-		ExperimentID:         nullStringPtr(row.ExperimentID),
+		ExperimentID:         util.NullStringToPtr(row.ExperimentID),
 		TranscriptPath:       row.TranscriptPath,
-		TranscriptStoredPath: nullStringPtr(row.TranscriptStoredPath),
+		TranscriptStoredPath: util.NullStringToPtr(row.TranscriptStoredPath),
 		Cwd:                  row.Cwd,
 		PermissionMode:       row.PermissionMode,
 		ExitReason:           row.ExitReason,

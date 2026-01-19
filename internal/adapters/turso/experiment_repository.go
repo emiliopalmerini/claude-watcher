@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/emiliopalmerini/mclaude/internal/domain"
+	"github.com/emiliopalmerini/mclaude/internal/util"
 	"github.com/emiliopalmerini/mclaude/sqlc/generated"
 )
 
@@ -31,11 +32,11 @@ func (r *ExperimentRepository) Create(ctx context.Context, experiment *domain.Ex
 	return r.queries.CreateExperiment(ctx, sqlc.CreateExperimentParams{
 		ID:          experiment.ID,
 		Name:        experiment.Name,
-		Description: nullString(experiment.Description),
-		Hypothesis:  nullString(experiment.Hypothesis),
+		Description: util.NullStringPtr(experiment.Description),
+		Hypothesis:  util.NullStringPtr(experiment.Hypothesis),
 		StartedAt:   experiment.StartedAt.Format(time.RFC3339),
 		EndedAt:     endedAt,
-		IsActive:    boolToInt(experiment.IsActive),
+		IsActive:    util.BoolToInt64(experiment.IsActive),
 		CreatedAt:   experiment.CreatedAt.Format(time.RFC3339),
 	})
 }
@@ -94,11 +95,11 @@ func (r *ExperimentRepository) Update(ctx context.Context, experiment *domain.Ex
 
 	return r.queries.UpdateExperiment(ctx, sqlc.UpdateExperimentParams{
 		Name:        experiment.Name,
-		Description: nullString(experiment.Description),
-		Hypothesis:  nullString(experiment.Hypothesis),
+		Description: util.NullStringPtr(experiment.Description),
+		Hypothesis:  util.NullStringPtr(experiment.Hypothesis),
 		StartedAt:   experiment.StartedAt.Format(time.RFC3339),
 		EndedAt:     endedAt,
-		IsActive:    boolToInt(experiment.IsActive),
+		IsActive:    util.BoolToInt64(experiment.IsActive),
 		ID:          experiment.ID,
 	})
 }
@@ -132,32 +133,11 @@ func experimentFromRow(row sqlc.Experiment) *domain.Experiment {
 	return &domain.Experiment{
 		ID:          row.ID,
 		Name:        row.Name,
-		Description: nullStringPtr(row.Description),
-		Hypothesis:  nullStringPtr(row.Hypothesis),
+		Description: util.NullStringToPtr(row.Description),
+		Hypothesis:  util.NullStringToPtr(row.Hypothesis),
 		StartedAt:   startedAt,
 		EndedAt:     endedAt,
 		IsActive:    row.IsActive == 1,
 		CreatedAt:   createdAt,
 	}
-}
-
-func nullString(s *string) sql.NullString {
-	if s == nil {
-		return sql.NullString{}
-	}
-	return sql.NullString{String: *s, Valid: true}
-}
-
-func nullStringPtr(ns sql.NullString) *string {
-	if !ns.Valid {
-		return nil
-	}
-	return &ns.String
-}
-
-func boolToInt(b bool) int64 {
-	if b {
-		return 1
-	}
-	return 0
 }

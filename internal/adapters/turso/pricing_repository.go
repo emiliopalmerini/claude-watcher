@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/emiliopalmerini/mclaude/internal/domain"
+	"github.com/emiliopalmerini/mclaude/internal/util"
 	"github.com/emiliopalmerini/mclaude/sqlc/generated"
 )
 
@@ -28,9 +29,9 @@ func (r *PricingRepository) Create(ctx context.Context, pricing *domain.ModelPri
 		DisplayName:          pricing.DisplayName,
 		InputPerMillion:      pricing.InputPerMillion,
 		OutputPerMillion:     pricing.OutputPerMillion,
-		CacheReadPerMillion:  nullFloat64(pricing.CacheReadPerMillion),
-		CacheWritePerMillion: nullFloat64(pricing.CacheWritePerMillion),
-		IsDefault:            boolToInt(pricing.IsDefault),
+		CacheReadPerMillion:  util.NullFloat64(pricing.CacheReadPerMillion),
+		CacheWritePerMillion: util.NullFloat64(pricing.CacheWritePerMillion),
+		IsDefault:            util.BoolToInt64(pricing.IsDefault),
 		CreatedAt:            pricing.CreatedAt.Format(time.RFC3339),
 	})
 }
@@ -75,9 +76,9 @@ func (r *PricingRepository) Update(ctx context.Context, pricing *domain.ModelPri
 		DisplayName:          pricing.DisplayName,
 		InputPerMillion:      pricing.InputPerMillion,
 		OutputPerMillion:     pricing.OutputPerMillion,
-		CacheReadPerMillion:  nullFloat64(pricing.CacheReadPerMillion),
-		CacheWritePerMillion: nullFloat64(pricing.CacheWritePerMillion),
-		IsDefault:            boolToInt(pricing.IsDefault),
+		CacheReadPerMillion:  util.NullFloat64(pricing.CacheReadPerMillion),
+		CacheWritePerMillion: util.NullFloat64(pricing.CacheWritePerMillion),
+		IsDefault:            util.BoolToInt64(pricing.IsDefault),
 		ID:                   pricing.ID,
 	})
 }
@@ -111,11 +112,4 @@ func pricingFromRow(row sqlc.ModelPricing) *domain.ModelPricing {
 		IsDefault:            row.IsDefault == 1,
 		CreatedAt:            createdAt,
 	}
-}
-
-func nullFloat64(f *float64) sql.NullFloat64 {
-	if f == nil {
-		return sql.NullFloat64{}
-	}
-	return sql.NullFloat64{Float64: *f, Valid: true}
 }

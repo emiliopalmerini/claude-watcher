@@ -7,71 +7,9 @@ import (
 	"time"
 
 	"github.com/emiliopalmerini/mclaude/internal/domain"
+	"github.com/emiliopalmerini/mclaude/internal/util"
 	sqlc "github.com/emiliopalmerini/mclaude/sqlc/generated"
 )
-
-type UsageMetricsRepository struct {
-	db      *sql.DB
-	queries *sqlc.Queries
-}
-
-func NewUsageMetricsRepository(db *sql.DB) *UsageMetricsRepository {
-	return &UsageMetricsRepository{
-		db:      db,
-		queries: sqlc.New(db),
-	}
-}
-
-func (r *UsageMetricsRepository) Create(ctx context.Context, metric *domain.UsageMetric) error {
-	params := sqlc.CreateUsageMetricParams{
-		MetricName: metric.MetricName,
-		Value:      metric.Value,
-		RecordedAt: metric.RecordedAt.Format(time.RFC3339),
-	}
-	if metric.Attributes != nil {
-		params.Attributes = sql.NullString{String: *metric.Attributes, Valid: true}
-	}
-	return r.queries.CreateUsageMetric(ctx, params)
-}
-
-func (r *UsageMetricsRepository) GetDailySummary(ctx context.Context) (*domain.UsageSummary, error) {
-	row, err := r.queries.GetDailyUsageSummary(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get daily usage summary: %w", err)
-	}
-	return &domain.UsageSummary{
-		TotalTokens: row.TotalTokens,
-		TotalCost:   row.TotalCost,
-	}, nil
-}
-
-func (r *UsageMetricsRepository) GetWeeklySummary(ctx context.Context) (*domain.UsageSummary, error) {
-	row, err := r.queries.GetWeeklyUsageSummary(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get weekly usage summary: %w", err)
-	}
-	return &domain.UsageSummary{
-		TotalTokens: row.TotalTokens,
-		TotalCost:   row.TotalCost,
-	}, nil
-}
-
-func (r *UsageMetricsRepository) DeleteBefore(ctx context.Context, before string) (int64, error) {
-	return r.queries.DeleteUsageMetricsBefore(ctx, before)
-}
-
-func (r *UsageMetricsRepository) GetRollingWindowSummary(ctx context.Context, windowHours int) (*domain.UsageSummary, error) {
-	// SQLite datetime modifier needs negative hours
-	hoursParam := fmt.Sprintf("-%d", windowHours)
-	row, err := r.queries.GetRollingWindowUsage(ctx, sql.NullString{String: hoursParam, Valid: true})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get rolling window usage: %w", err)
-	}
-	return &domain.UsageSummary{
-		TotalTokens: row.TotalTokens,
-		TotalCost:   row.TotalCost,
-	}, nil
-}
 
 type UsageLimitsRepository struct {
 	db      *sql.DB
@@ -131,8 +69,8 @@ func limitFromRow(row sqlc.UsageLimit) *domain.UsageLimit {
 		LimitValue:    row.LimitValue,
 		WarnThreshold: 0.8,
 		Enabled:       row.Enabled == 1,
-		CreatedAt:     parseTime(row.CreatedAt),
-		UpdatedAt:     parseTime(row.UpdatedAt),
+		CreatedAt:     util.ParseTimeRFC3339(row.CreatedAt),
+		UpdatedAt:     util.ParseTimeRFC3339(row.UpdatedAt),
 	}
 	if row.WarnThreshold.Valid {
 		limit.WarnThreshold = row.WarnThreshold.Float64
@@ -186,12 +124,24 @@ func (r *PlanConfigRepository) UpdateLearnedLimit(ctx context.Context, limit flo
 	return r.queries.UpdateLearnedLimit(ctx, sql.NullFloat64{Float64: limit, Valid: true})
 }
 
+func (r *PlanConfigRepository) GetRollingWindowSummary(ctx context.Context, windowHours int) (*domain.UsageSummary, error) {
+	hoursParam := fmt.Sprintf("-%d", windowHours)
+	row, err := r.queries.GetRollingWindowUsage(ctx, sql.NullString{String: hoursParam, Valid: true})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get rolling window usage: %w", err)
+	}
+	return &domain.UsageSummary{
+		TotalTokens: row.TotalTokens,
+		TotalCost:   row.TotalCost,
+	}, nil
+}
+
 func planConfigFromRow(row sqlc.PlanConfig) *domain.PlanConfig {
 	config := &domain.PlanConfig{
 		PlanType:    row.PlanType,
 		WindowHours: int(row.WindowHours),
-		CreatedAt:   parseTime(row.CreatedAt),
-		UpdatedAt:   parseTime(row.UpdatedAt),
+		CreatedAt:   util.ParseTimeRFC3339(row.CreatedAt),
+		UpdatedAt:   util.ParseTimeRFC3339(row.UpdatedAt),
 	}
 	if row.LearnedTokenLimit.Valid {
 		config.LearnedTokenLimit = &row.LearnedTokenLimit.Float64

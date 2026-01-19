@@ -9,6 +9,7 @@ import (
 
 	"github.com/emiliopalmerini/mclaude/internal/adapters/storage"
 	"github.com/emiliopalmerini/mclaude/internal/adapters/turso"
+	"github.com/emiliopalmerini/mclaude/internal/util"
 	sqlc "github.com/emiliopalmerini/mclaude/sqlc/generated"
 )
 
@@ -115,7 +116,7 @@ func runCleanup(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("experiment %q not found", cleanupExperiment)
 		}
 
-		paths, err := queries.GetSessionTranscriptPathsByExperiment(ctx, toNullString(exp.ID))
+		paths, err := queries.GetSessionTranscriptPathsByExperiment(ctx, util.NullString(exp.ID))
 		if err != nil {
 			return fmt.Errorf("failed to get sessions: %w", err)
 		}

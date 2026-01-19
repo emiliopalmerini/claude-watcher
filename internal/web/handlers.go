@@ -1,7 +1,6 @@
 package web
 
 import (
-	"database/sql"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -10,6 +9,7 @@ import (
 
 	"github.com/emiliopalmerini/mclaude/internal/domain"
 	"github.com/emiliopalmerini/mclaude/internal/parser"
+	"github.com/emiliopalmerini/mclaude/internal/util"
 	"github.com/emiliopalmerini/mclaude/internal/web/templates"
 	sqlc "github.com/emiliopalmerini/mclaude/sqlc/generated"
 )
@@ -24,14 +24,14 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 
 	stats := templates.DashboardStats{
 		SessionCount: statsRow.SessionCount,
-		TotalTokens:  toInt64(statsRow.TotalTokenInput) + toInt64(statsRow.TotalTokenOutput),
-		TotalCost:    toFloat64(statsRow.TotalCostUsd),
-		TotalTurns:   toInt64(statsRow.TotalTurns),
-		TokenInput:   toInt64(statsRow.TotalTokenInput),
-		TokenOutput:  toInt64(statsRow.TotalTokenOutput),
-		CacheRead:    toInt64(statsRow.TotalTokenCacheRead),
-		CacheWrite:   toInt64(statsRow.TotalTokenCacheWrite),
-		TotalErrors:  toInt64(statsRow.TotalErrors),
+		TotalTokens:  util.ToInt64(statsRow.TotalTokenInput) + util.ToInt64(statsRow.TotalTokenOutput),
+		TotalCost:    util.ToFloat64(statsRow.TotalCostUsd),
+		TotalTurns:   util.ToInt64(statsRow.TotalTurns),
+		TokenInput:   util.ToInt64(statsRow.TotalTokenInput),
+		TokenOutput:  util.ToInt64(statsRow.TotalTokenOutput),
+		CacheRead:    util.ToInt64(statsRow.TotalTokenCacheRead),
+		CacheWrite:   util.ToInt64(statsRow.TotalTokenCacheWrite),
+		TotalErrors:  util.ToInt64(statsRow.TotalErrors),
 	}
 
 	// Get usage limit stats
@@ -50,7 +50,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Get rolling window usage
-		if summary, err := s.usageMetricsRepo.GetRollingWindowSummary(ctx, planConfig.WindowHours); err == nil {
+		if summary, err := s.planConfigRepo.GetRollingWindowSummary(ctx, planConfig.WindowHours); err == nil {
 			usageStats.TokensUsed = summary.TotalTokens
 
 			// Calculate percentage
@@ -330,8 +330,8 @@ func (s *Server) handleExperiments(w http.ResponseWriter, r *http.Request) {
 		// Add stats
 		if es, ok := statsMap[e.ID]; ok {
 			exp.SessionCount = es.SessionCount
-			exp.TotalTokens = toInt64(es.TotalTokenInput) + toInt64(es.TotalTokenOutput)
-			exp.TotalCost = toFloat64(es.TotalCostUsd)
+			exp.TotalTokens = util.ToInt64(es.TotalTokenInput) + util.ToInt64(es.TotalTokenOutput)
+			exp.TotalCost = util.ToFloat64(es.TotalCostUsd)
 			if es.SessionCount > 0 {
 				exp.TokensPerSess = exp.TotalTokens / es.SessionCount
 				exp.CostPerSession = exp.TotalCost / float64(es.SessionCount)
@@ -375,21 +375,21 @@ func (s *Server) handleExperimentDetail(w http.ResponseWriter, r *http.Request) 
 
 	// Get aggregate stats
 	statsRow, err := queries.GetAggregateStatsByExperiment(ctx, sqlc.GetAggregateStatsByExperimentParams{
-		ExperimentID: toNullString(exp.ID),
+		ExperimentID: util.NullString(exp.ID),
 		CreatedAt:    "1970-01-01T00:00:00Z",
 	})
 	if err == nil {
 		detail.SessionCount = statsRow.SessionCount
-		detail.TotalTurns = toInt64(statsRow.TotalTurns)
-		detail.UserMessages = toInt64(statsRow.TotalUserMessages)
-		detail.AssistantMessages = toInt64(statsRow.TotalAssistantMessages)
-		detail.TotalErrors = toInt64(statsRow.TotalErrors)
-		detail.TokenInput = toInt64(statsRow.TotalTokenInput)
-		detail.TokenOutput = toInt64(statsRow.TotalTokenOutput)
-		detail.CacheRead = toInt64(statsRow.TotalTokenCacheRead)
-		detail.CacheWrite = toInt64(statsRow.TotalTokenCacheWrite)
+		detail.TotalTurns = util.ToInt64(statsRow.TotalTurns)
+		detail.UserMessages = util.ToInt64(statsRow.TotalUserMessages)
+		detail.AssistantMessages = util.ToInt64(statsRow.TotalAssistantMessages)
+		detail.TotalErrors = util.ToInt64(statsRow.TotalErrors)
+		detail.TokenInput = util.ToInt64(statsRow.TotalTokenInput)
+		detail.TokenOutput = util.ToInt64(statsRow.TotalTokenOutput)
+		detail.CacheRead = util.ToInt64(statsRow.TotalTokenCacheRead)
+		detail.CacheWrite = util.ToInt64(statsRow.TotalTokenCacheWrite)
 		detail.TotalTokens = detail.TokenInput + detail.TokenOutput
-		detail.TotalCost = toFloat64(statsRow.TotalCostUsd)
+		detail.TotalCost = util.ToFloat64(statsRow.TotalCostUsd)
 		if statsRow.SessionCount > 0 {
 			detail.TokensPerSession = detail.TotalTokens / statsRow.SessionCount
 			detail.CostPerSession = detail.TotalCost / float64(statsRow.SessionCount)
@@ -398,7 +398,7 @@ func (s *Server) handleExperimentDetail(w http.ResponseWriter, r *http.Request) 
 
 	// Get top tools for this experiment
 	tools, _ := queries.GetTopToolsUsageByExperiment(ctx, sqlc.GetTopToolsUsageByExperimentParams{
-		ExperimentID: toNullString(exp.ID),
+		ExperimentID: util.NullString(exp.ID),
 		Limit:        5,
 	})
 	for _, t := range tools {
@@ -412,7 +412,7 @@ func (s *Server) handleExperimentDetail(w http.ResponseWriter, r *http.Request) 
 
 	// Get recent sessions for this experiment (with metrics in single query)
 	sessions, _ := queries.ListSessionsWithMetricsByExperiment(ctx, sqlc.ListSessionsWithMetricsByExperimentParams{
-		ExperimentID: toNullString(exp.ID),
+		ExperimentID: util.NullString(exp.ID),
 		Limit:        10,
 	})
 	for _, sess := range sessions {
@@ -429,7 +429,7 @@ func (s *Server) handleExperimentDetail(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Get quality stats
-	qualityStats, err := queries.GetQualityStatsByExperiment(ctx, toNullString(exp.ID))
+	qualityStats, err := queries.GetQualityStatsByExperiment(ctx, util.NullString(exp.ID))
 	if err == nil && qualityStats.ReviewedCount > 0 {
 		detail.ReviewedCount = qualityStats.ReviewedCount
 		if qualityStats.AvgOverallRating.Valid {
@@ -500,21 +500,21 @@ func (s *Server) handleExperimentCompare(w http.ResponseWriter, r *http.Request)
 
 		// Get aggregate stats
 		statsRow, err := queries.GetAggregateStatsByExperiment(ctx, sqlc.GetAggregateStatsByExperimentParams{
-			ExperimentID: toNullString(exp.ID),
+			ExperimentID: util.NullString(exp.ID),
 			CreatedAt:    "1970-01-01T00:00:00Z",
 		})
 		if err == nil {
 			item.SessionCount = statsRow.SessionCount
-			item.TotalTurns = toInt64(statsRow.TotalTurns)
-			item.UserMessages = toInt64(statsRow.TotalUserMessages)
-			item.AssistantMessages = toInt64(statsRow.TotalAssistantMessages)
-			item.TotalErrors = toInt64(statsRow.TotalErrors)
-			item.TokenInput = toInt64(statsRow.TotalTokenInput)
-			item.TokenOutput = toInt64(statsRow.TotalTokenOutput)
-			item.CacheRead = toInt64(statsRow.TotalTokenCacheRead)
-			item.CacheWrite = toInt64(statsRow.TotalTokenCacheWrite)
+			item.TotalTurns = util.ToInt64(statsRow.TotalTurns)
+			item.UserMessages = util.ToInt64(statsRow.TotalUserMessages)
+			item.AssistantMessages = util.ToInt64(statsRow.TotalAssistantMessages)
+			item.TotalErrors = util.ToInt64(statsRow.TotalErrors)
+			item.TokenInput = util.ToInt64(statsRow.TotalTokenInput)
+			item.TokenOutput = util.ToInt64(statsRow.TotalTokenOutput)
+			item.CacheRead = util.ToInt64(statsRow.TotalTokenCacheRead)
+			item.CacheWrite = util.ToInt64(statsRow.TotalTokenCacheWrite)
 			item.TotalTokens = item.TokenInput + item.TokenOutput
-			item.TotalCost = toFloat64(statsRow.TotalCostUsd)
+			item.TotalCost = util.ToFloat64(statsRow.TotalCostUsd)
 			if statsRow.SessionCount > 0 {
 				item.TokensPerSession = item.TotalTokens / statsRow.SessionCount
 				item.CostPerSession = item.TotalCost / float64(statsRow.SessionCount)
@@ -522,7 +522,7 @@ func (s *Server) handleExperimentCompare(w http.ResponseWriter, r *http.Request)
 		}
 
 		// Get quality stats
-		qualityStats, err := queries.GetQualityStatsByExperiment(ctx, toNullString(exp.ID))
+		qualityStats, err := queries.GetQualityStatsByExperiment(ctx, util.NullString(exp.ID))
 		if err == nil && qualityStats.ReviewedCount > 0 {
 			item.ReviewedCount = qualityStats.ReviewedCount
 
@@ -601,7 +601,7 @@ func (s *Server) handleAPIStats(w http.ResponseWriter, r *http.Request) {
 	queries := sqlc.New(s.db)
 
 	period := r.URL.Query().Get("period")
-	startDate := getStartDateForPeriod(period)
+	startDate := util.GetStartDateForPeriod(period)
 
 	statsRow, err := queries.GetAggregateStats(ctx, startDate)
 	if err != nil {
@@ -611,10 +611,10 @@ func (s *Server) handleAPIStats(w http.ResponseWriter, r *http.Request) {
 
 	stats := map[string]interface{}{
 		"session_count": statsRow.SessionCount,
-		"total_tokens":  toInt64(statsRow.TotalTokenInput) + toInt64(statsRow.TotalTokenOutput),
-		"total_cost":    toFloat64(statsRow.TotalCostUsd),
-		"token_input":   toInt64(statsRow.TotalTokenInput),
-		"token_output":  toInt64(statsRow.TotalTokenOutput),
+		"total_tokens":  util.ToInt64(statsRow.TotalTokenInput) + util.ToInt64(statsRow.TotalTokenOutput),
+		"total_cost":    util.ToFloat64(statsRow.TotalCostUsd),
+		"token_input":   util.ToInt64(statsRow.TotalTokenInput),
+		"token_output":  util.ToInt64(statsRow.TotalTokenOutput),
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -626,7 +626,7 @@ func (s *Server) handleAPIChartTokens(w http.ResponseWriter, r *http.Request) {
 	queries := sqlc.New(s.db)
 
 	period := r.URL.Query().Get("period")
-	startDate := getStartDateForPeriod(period)
+	startDate := util.GetStartDateForPeriod(period)
 	if period == "" {
 		// Default to last 30 days for charts
 		startDate = time.Now().AddDate(0, 0, -30).Format(time.RFC3339)
@@ -643,7 +643,7 @@ func (s *Server) handleAPIChartTokens(w http.ResponseWriter, r *http.Request) {
 
 	for i, stat := range stats {
 		labels[i] = stat.Date.(string)
-		tokens[i] = toInt64(stat.TotalTokens)
+		tokens[i] = util.ToInt64(stat.TotalTokens)
 		sessions[i] = stat.SessionCount
 	}
 
@@ -660,7 +660,7 @@ func (s *Server) handleAPIChartCost(w http.ResponseWriter, r *http.Request) {
 	queries := sqlc.New(s.db)
 
 	period := r.URL.Query().Get("period")
-	startDate := getStartDateForPeriod(period)
+	startDate := util.GetStartDateForPeriod(period)
 	if period == "" {
 		startDate = time.Now().AddDate(0, 0, -30).Format(time.RFC3339)
 	}
@@ -675,7 +675,7 @@ func (s *Server) handleAPIChartCost(w http.ResponseWriter, r *http.Request) {
 
 	for i, stat := range stats {
 		labels[i] = stat.Date.(string)
-		costs[i] = toFloat64(stat.TotalCost)
+		costs[i] = util.ToFloat64(stat.TotalCost)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -920,41 +920,6 @@ func convertViewerMessagesToTemplate(messages []parser.ViewerMessage) []template
 
 // Helpers
 
-func toInt64(v interface{}) int64 {
-	if v == nil {
-		return 0
-	}
-	switch n := v.(type) {
-	case int64:
-		return n
-	case float64:
-		return int64(n)
-	default:
-		return 0
-	}
-}
-
-func toFloat64(v interface{}) float64 {
-	if v == nil {
-		return 0
-	}
-	switch n := v.(type) {
-	case float64:
-		return n
-	case int64:
-		return float64(n)
-	default:
-		return 0
-	}
-}
-
-func toNullString(s string) sql.NullString {
-	if s == "" {
-		return sql.NullString{}
-	}
-	return sql.NullString{String: s, Valid: true}
-}
-
 func splitIDs(s string) []string {
 	if s == "" {
 		return nil
@@ -967,26 +932,4 @@ func splitIDs(s string) []string {
 		}
 	}
 	return ids
-}
-
-func getStartDateForPeriod(period string) string {
-	now := time.Now().UTC()
-	var start time.Time
-
-	switch period {
-	case "today":
-		start = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
-	case "week":
-		weekday := int(now.Weekday())
-		if weekday == 0 {
-			weekday = 7
-		}
-		start = time.Date(now.Year(), now.Month(), now.Day()-weekday+1, 0, 0, 0, 0, time.UTC)
-	case "month":
-		start = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
-	default:
-		start = time.Unix(0, 0)
-	}
-
-	return start.Format(time.RFC3339)
 }

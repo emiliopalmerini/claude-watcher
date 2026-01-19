@@ -144,7 +144,6 @@ func runLimitsLearn(cmd *cobra.Command, args []string) error {
 	defer db.Close()
 
 	planRepo := turso.NewPlanConfigRepository(db)
-	metricsRepo := turso.NewUsageMetricsRepository(db)
 
 	config, err := planRepo.Get(ctx)
 	if err != nil {
@@ -154,13 +153,13 @@ func runLimitsLearn(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("no plan configured. Run 'mclaude limits plan <type>' first")
 	}
 
-	summary, err := metricsRepo.GetRollingWindowSummary(ctx, config.WindowHours)
+	summary, err := planRepo.GetRollingWindowSummary(ctx, config.WindowHours)
 	if err != nil {
 		return fmt.Errorf("failed to get usage: %w", err)
 	}
 
 	if summary.TotalTokens == 0 {
-		return fmt.Errorf("no token usage recorded. Make sure OTEL is configured and mclaude-otel is running")
+		return fmt.Errorf("no token usage recorded in the last %d hours", config.WindowHours)
 	}
 
 	if err := planRepo.UpdateLearnedLimit(ctx, summary.TotalTokens); err != nil {
@@ -182,7 +181,6 @@ func runLimitsList(cmd *cobra.Command, args []string) error {
 	defer db.Close()
 
 	planRepo := turso.NewPlanConfigRepository(db)
-	metricsRepo := turso.NewUsageMetricsRepository(db)
 
 	config, err := planRepo.Get(ctx)
 	if err != nil {
@@ -198,7 +196,7 @@ func runLimitsList(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	summary, err := metricsRepo.GetRollingWindowSummary(ctx, config.WindowHours)
+	summary, err := planRepo.GetRollingWindowSummary(ctx, config.WindowHours)
 	if err != nil {
 		return fmt.Errorf("failed to get usage: %w", err)
 	}
@@ -270,7 +268,6 @@ func runLimitsCheck(cmd *cobra.Command, args []string) error {
 	defer db.Close()
 
 	planRepo := turso.NewPlanConfigRepository(db)
-	metricsRepo := turso.NewUsageMetricsRepository(db)
 
 	config, err := planRepo.Get(ctx)
 	if err != nil {
@@ -282,7 +279,7 @@ func runLimitsCheck(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	summary, err := metricsRepo.GetRollingWindowSummary(ctx, config.WindowHours)
+	summary, err := planRepo.GetRollingWindowSummary(ctx, config.WindowHours)
 	if err != nil {
 		return fmt.Errorf("failed to get usage: %w", err)
 	}

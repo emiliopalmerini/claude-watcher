@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/emiliopalmerini/mclaude/internal/adapters/turso"
+	"github.com/emiliopalmerini/mclaude/internal/util"
 	sqlc "github.com/emiliopalmerini/mclaude/sqlc/generated"
 )
 
@@ -161,8 +162,8 @@ func runExperimentCreate(cmd *cobra.Command, args []string) error {
 	exp := sqlc.CreateExperimentParams{
 		ID:          uuid.New().String(),
 		Name:        name,
-		Description: toNullString(expDescription),
-		Hypothesis:  toNullString(expHypothesis),
+		Description: util.NullString(expDescription),
+		Hypothesis:  util.NullString(expHypothesis),
 		StartedAt:   now,
 		IsActive:    1,
 		CreatedAt:   now,
@@ -222,10 +223,10 @@ func runExperimentList(cmd *cobra.Command, args []string) error {
 			status = "ended"
 		}
 
-		started := formatDate(exp.StartedAt)
+		started := util.FormatDateISO(exp.StartedAt)
 		ended := "-"
 		if exp.EndedAt.Valid {
-			ended = formatDate(exp.EndedAt.String)
+			ended = util.FormatDateISO(exp.EndedAt.String)
 		}
 
 		// Get stats for this experiment
@@ -234,12 +235,12 @@ func runExperimentList(cmd *cobra.Command, args []string) error {
 		cost := 0.0
 		if es, ok := statsMap[exp.ID]; ok {
 			sessions = es.SessionCount
-			tokens = toInt64(es.TotalTokenInput) + toInt64(es.TotalTokenOutput)
-			cost = toFloat64(es.TotalCostUsd)
+			tokens = util.ToInt64(es.TotalTokenInput) + util.ToInt64(es.TotalTokenOutput)
+			cost = util.ToFloat64(es.TotalCostUsd)
 		}
 
 		fmt.Fprintf(w, "%s\t%s\t%d\t%s\t$%.2f\t%s\t%s\n",
-			exp.Name, status, sessions, formatNumber(tokens), cost, started, ended)
+			exp.Name, status, sessions, util.FormatNumber(tokens), cost, started, ended)
 	}
 
 	w.Flush()
@@ -360,7 +361,7 @@ func runExperimentEnd(cmd *cobra.Command, args []string) error {
 		Description: exp.Description,
 		Hypothesis:  exp.Hypothesis,
 		StartedAt:   exp.StartedAt,
-		EndedAt:     toNullString(now),
+		EndedAt:     util.NullString(now),
 		IsActive:    0,
 	}); err != nil {
 		return fmt.Errorf("failed to end experiment: %w", err)
@@ -397,14 +398,6 @@ func runExperimentDelete(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func formatDate(s string) string {
-	t, err := time.Parse(time.RFC3339, s)
-	if err != nil {
-		return s
-	}
-	return t.Format("2006-01-02")
-}
-
 func truncate(s string, maxLen int) string {
 	if len(s) <= maxLen {
 		return s
@@ -432,7 +425,7 @@ func runExperimentStats(cmd *cobra.Command, args []string) error {
 
 	// Get stats for this experiment
 	row, err := queries.GetAggregateStatsByExperiment(ctx, sqlc.GetAggregateStatsByExperimentParams{
-		ExperimentID: toNullString(exp.ID),
+		ExperimentID: util.NullString(exp.ID),
 		CreatedAt:    "1970-01-01T00:00:00Z", // All time
 	})
 	if err != nil {
@@ -459,9 +452,9 @@ func runExperimentStats(cmd *cobra.Command, args []string) error {
 		status = "ended"
 	}
 	fmt.Printf("  Status:       %s\n", status)
-	fmt.Printf("  Started:      %s\n", formatDate(exp.StartedAt))
+	fmt.Printf("  Started:      %s\n", util.FormatDateISO(exp.StartedAt))
 	if exp.EndedAt.Valid {
-		fmt.Printf("  Ended:        %s\n", formatDate(exp.EndedAt.String))
+		fmt.Printf("  Ended:        %s\n", util.FormatDateISO(exp.EndedAt.String))
 	}
 	fmt.Println()
 
@@ -469,33 +462,33 @@ func runExperimentStats(cmd *cobra.Command, args []string) error {
 	fmt.Printf("  Sessions\n")
 	fmt.Printf("  --------\n")
 	fmt.Printf("  Total:             %d\n", row.SessionCount)
-	fmt.Printf("  Turns:             %s\n", formatNumber(toInt64(row.TotalTurns)))
-	fmt.Printf("  User messages:     %s\n", formatNumber(toInt64(row.TotalUserMessages)))
-	fmt.Printf("  Assistant msgs:    %s\n", formatNumber(toInt64(row.TotalAssistantMessages)))
-	fmt.Printf("  Errors:            %d\n", toInt64(row.TotalErrors))
+	fmt.Printf("  Turns:             %s\n", util.FormatNumber(util.ToInt64(row.TotalTurns)))
+	fmt.Printf("  User messages:     %s\n", util.FormatNumber(util.ToInt64(row.TotalUserMessages)))
+	fmt.Printf("  Assistant msgs:    %s\n", util.FormatNumber(util.ToInt64(row.TotalAssistantMessages)))
+	fmt.Printf("  Errors:            %d\n", util.ToInt64(row.TotalErrors))
 	fmt.Println()
 
 	fmt.Printf("  Tokens\n")
 	fmt.Printf("  ------\n")
-	fmt.Printf("  Input:             %s\n", formatNumber(toInt64(row.TotalTokenInput)))
-	fmt.Printf("  Output:            %s\n", formatNumber(toInt64(row.TotalTokenOutput)))
-	fmt.Printf("  Cache read:        %s\n", formatNumber(toInt64(row.TotalTokenCacheRead)))
-	fmt.Printf("  Cache write:       %s\n", formatNumber(toInt64(row.TotalTokenCacheWrite)))
-	totalTokens := toInt64(row.TotalTokenInput) + toInt64(row.TotalTokenOutput)
-	fmt.Printf("  Total:             %s\n", formatNumber(totalTokens))
+	fmt.Printf("  Input:             %s\n", util.FormatNumber(util.ToInt64(row.TotalTokenInput)))
+	fmt.Printf("  Output:            %s\n", util.FormatNumber(util.ToInt64(row.TotalTokenOutput)))
+	fmt.Printf("  Cache read:        %s\n", util.FormatNumber(util.ToInt64(row.TotalTokenCacheRead)))
+	fmt.Printf("  Cache write:       %s\n", util.FormatNumber(util.ToInt64(row.TotalTokenCacheWrite)))
+	totalTokens := util.ToInt64(row.TotalTokenInput) + util.ToInt64(row.TotalTokenOutput)
+	fmt.Printf("  Total:             %s\n", util.FormatNumber(totalTokens))
 	fmt.Println()
 
 	fmt.Printf("  Cost\n")
 	fmt.Printf("  ----\n")
-	fmt.Printf("  Estimated:         $%.4f\n", toFloat64(row.TotalCostUsd))
+	fmt.Printf("  Estimated:         $%.4f\n", util.ToFloat64(row.TotalCostUsd))
 	fmt.Println()
 
 	// Efficiency metrics
 	if row.SessionCount > 0 {
 		fmt.Printf("  Efficiency\n")
 		fmt.Printf("  ----------\n")
-		fmt.Printf("  Tokens/session:    %s\n", formatNumber(totalTokens/row.SessionCount))
-		fmt.Printf("  Cost/session:      $%.4f\n", toFloat64(row.TotalCostUsd)/float64(row.SessionCount))
+		fmt.Printf("  Tokens/session:    %s\n", util.FormatNumber(totalTokens/row.SessionCount))
+		fmt.Printf("  Cost/session:      $%.4f\n", util.ToFloat64(row.TotalCostUsd)/float64(row.SessionCount))
 		fmt.Println()
 	}
 
@@ -523,17 +516,17 @@ func runExperimentCompare(cmd *cobra.Command, args []string) error {
 		}
 
 		row, err := queries.GetAggregateStatsByExperiment(ctx, sqlc.GetAggregateStatsByExperimentParams{
-			ExperimentID: toNullString(exp.ID),
+			ExperimentID: util.NullString(exp.ID),
 			CreatedAt:    "1970-01-01T00:00:00Z",
 		})
 		if err != nil {
 			return fmt.Errorf("failed to get stats for %q: %w", name, err)
 		}
 
-		tokenInput := toInt64(row.TotalTokenInput)
-		tokenOutput := toInt64(row.TotalTokenOutput)
+		tokenInput := util.ToInt64(row.TotalTokenInput)
+		tokenOutput := util.ToInt64(row.TotalTokenOutput)
 		totalTokens := tokenInput + tokenOutput
-		cost := toFloat64(row.TotalCostUsd)
+		cost := util.ToFloat64(row.TotalCostUsd)
 
 		tokensPerSes := int64(0)
 		costPerSes := 0.0
@@ -545,15 +538,15 @@ func runExperimentCompare(cmd *cobra.Command, args []string) error {
 		experiments = append(experiments, expData{
 			name:         name,
 			sessions:     row.SessionCount,
-			turns:        toInt64(row.TotalTurns),
-			userMsgs:     toInt64(row.TotalUserMessages),
-			assistMsgs:   toInt64(row.TotalAssistantMessages),
+			turns:        util.ToInt64(row.TotalTurns),
+			userMsgs:     util.ToInt64(row.TotalUserMessages),
+			assistMsgs:   util.ToInt64(row.TotalAssistantMessages),
 			tokenInput:   tokenInput,
 			tokenOutput:  tokenOutput,
-			cacheRead:    toInt64(row.TotalTokenCacheRead),
-			cacheWrite:   toInt64(row.TotalTokenCacheWrite),
+			cacheRead:    util.ToInt64(row.TotalTokenCacheRead),
+			cacheWrite:   util.ToInt64(row.TotalTokenCacheWrite),
 			cost:         cost,
-			errors:       toInt64(row.TotalErrors),
+			errors:       util.ToInt64(row.TotalErrors),
 			totalTokens:  totalTokens,
 			tokensPerSes: tokensPerSes,
 			costPerSes:   costPerSes,
@@ -594,19 +587,19 @@ func runExperimentCompare(cmd *cobra.Command, args []string) error {
 
 	// Print rows
 	printCompareRow(w, "Sessions", experiments, func(e expData) string { return fmt.Sprintf("%d", e.sessions) })
-	printCompareRow(w, "Turns", experiments, func(e expData) string { return formatNumber(e.turns) })
-	printCompareRow(w, "User messages", experiments, func(e expData) string { return formatNumber(e.userMsgs) })
-	printCompareRow(w, "Assistant msgs", experiments, func(e expData) string { return formatNumber(e.assistMsgs) })
+	printCompareRow(w, "Turns", experiments, func(e expData) string { return util.FormatNumber(e.turns) })
+	printCompareRow(w, "User messages", experiments, func(e expData) string { return util.FormatNumber(e.userMsgs) })
+	printCompareRow(w, "Assistant msgs", experiments, func(e expData) string { return util.FormatNumber(e.assistMsgs) })
 	printCompareRow(w, "Errors", experiments, func(e expData) string { return fmt.Sprintf("%d", e.errors) })
 	fmt.Fprintln(w)
-	printCompareRow(w, "Token input", experiments, func(e expData) string { return formatNumber(e.tokenInput) })
-	printCompareRow(w, "Token output", experiments, func(e expData) string { return formatNumber(e.tokenOutput) })
-	printCompareRow(w, "Cache read", experiments, func(e expData) string { return formatNumber(e.cacheRead) })
-	printCompareRow(w, "Cache write", experiments, func(e expData) string { return formatNumber(e.cacheWrite) })
-	printCompareRow(w, "Total tokens", experiments, func(e expData) string { return formatNumber(e.totalTokens) })
+	printCompareRow(w, "Token input", experiments, func(e expData) string { return util.FormatNumber(e.tokenInput) })
+	printCompareRow(w, "Token output", experiments, func(e expData) string { return util.FormatNumber(e.tokenOutput) })
+	printCompareRow(w, "Cache read", experiments, func(e expData) string { return util.FormatNumber(e.cacheRead) })
+	printCompareRow(w, "Cache write", experiments, func(e expData) string { return util.FormatNumber(e.cacheWrite) })
+	printCompareRow(w, "Total tokens", experiments, func(e expData) string { return util.FormatNumber(e.totalTokens) })
 	fmt.Fprintln(w)
 	printCompareRow(w, "Cost", experiments, func(e expData) string { return fmt.Sprintf("$%.2f", e.cost) })
-	printCompareRow(w, "Tokens/session", experiments, func(e expData) string { return formatNumber(e.tokensPerSes) })
+	printCompareRow(w, "Tokens/session", experiments, func(e expData) string { return util.FormatNumber(e.tokensPerSes) })
 	printCompareRow(w, "Cost/session", experiments, func(e expData) string { return fmt.Sprintf("$%.4f", e.costPerSes) })
 
 	w.Flush()
