@@ -71,7 +71,7 @@ SELECT
     CAST(COALESCE(SUM(m.cost_estimate_usd), 0) AS REAL) as total_cost
 FROM sessions s
 JOIN session_metrics m ON s.id = m.session_id
-WHERE s.started_at >= datetime('now', ? || ' hours')
+WHERE datetime(s.started_at) >= datetime('now', ? || ' hours')
 `
 
 type GetRollingWindowUsageRow struct {
