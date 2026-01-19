@@ -14,7 +14,6 @@
       {
         packages = {
           mclaude = pkgs.callPackage ./nix/package.nix {};
-          mclaude-otel = pkgs.callPackage ./nix/mclaude-otel.nix {};
           default = self.packages.${system}.mclaude;
         };
 
