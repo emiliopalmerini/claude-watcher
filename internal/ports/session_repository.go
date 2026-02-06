@@ -41,3 +41,8 @@ type SessionCommandRepository interface {
 	CreateBatch(ctx context.Context, commands []*domain.SessionCommand) error
 	ListBySessionID(ctx context.Context, sessionID string) ([]*domain.SessionCommand, error)
 }
+
+type SessionSubagentRepository interface {
+	CreateBatch(ctx context.Context, subagents []*domain.SessionSubagent) error
+	ListBySessionID(ctx context.Context, sessionID string) ([]*domain.SessionSubagent, error)
+}
