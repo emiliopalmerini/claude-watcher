@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	sqlc "github.com/emiliopalmerini/mclaude/sqlc/generated"
+	"github.com/emiliopalmerini/mclaude/internal/domain"
 )
 
 var configCmd = &cobra.Command{
@@ -44,20 +44,15 @@ func init() {
 func runConfigModel(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 
-	queries := app.Queries
-
-	// No argument: show current default
 	if len(args) == 0 {
-		return showDefaultModel(ctx, queries)
+		return showDefaultModel(ctx)
 	}
-
-	// With argument: set default model
-	return setDefaultModel(ctx, queries, args[0])
+	return setDefaultModel(ctx, args[0])
 }
 
-func showDefaultModel(ctx context.Context, queries *sqlc.Queries) error {
-	defaultModel, err := queries.GetDefaultModelPricing(ctx)
-	if err != nil {
+func showDefaultModel(ctx context.Context) error {
+	defaultModel, err := app.PricingRepo.GetDefault(ctx)
+	if err != nil || defaultModel == nil {
 		fmt.Println("No default model configured")
 		fmt.Println("\nUse 'mclaude config model <name>' to set one")
 		fmt.Println("Available: opus, sonnet, haiku")
@@ -68,19 +63,18 @@ func showDefaultModel(ctx context.Context, queries *sqlc.Queries) error {
 	fmt.Printf("  ID: %s\n", defaultModel.ID)
 	fmt.Printf("  Input:  $%.2f / 1M tokens\n", defaultModel.InputPerMillion)
 	fmt.Printf("  Output: $%.2f / 1M tokens\n", defaultModel.OutputPerMillion)
-	if defaultModel.CacheReadPerMillion.Valid {
-		fmt.Printf("  Cache Read:  $%.2f / 1M tokens\n", defaultModel.CacheReadPerMillion.Float64)
+	if defaultModel.CacheReadPerMillion != nil {
+		fmt.Printf("  Cache Read:  $%.2f / 1M tokens\n", *defaultModel.CacheReadPerMillion)
 	}
-	if defaultModel.CacheWritePerMillion.Valid {
-		fmt.Printf("  Cache Write: $%.2f / 1M tokens\n", defaultModel.CacheWritePerMillion.Float64)
+	if defaultModel.CacheWritePerMillion != nil {
+		fmt.Printf("  Cache Write: $%.2f / 1M tokens\n", *defaultModel.CacheWritePerMillion)
 	}
 
 	return nil
 }
 
-func setDefaultModel(ctx context.Context, queries *sqlc.Queries, name string) error {
-	// Get all models
-	models, err := queries.ListModelPricing(ctx)
+func setDefaultModel(ctx context.Context, name string) error {
+	models, err := app.PricingRepo.List(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to list models: %w", err)
 	}
@@ -89,16 +83,13 @@ func setDefaultModel(ctx context.Context, queries *sqlc.Queries, name string) er
 		return fmt.Errorf("no models configured. Run migrations to add default models")
 	}
 
-	// Find matching model
 	nameLower := strings.ToLower(name)
-	var match *sqlc.ModelPricing
+	var match *domain.ModelPricing
 
-	for i := range models {
-		m := &models[i]
+	for _, m := range models {
 		idLower := strings.ToLower(m.ID)
 		displayLower := strings.ToLower(m.DisplayName)
 
-		// Exact match on short names
 		switch nameLower {
 		case "opus":
 			if strings.Contains(idLower, "opus") {
@@ -114,7 +105,6 @@ func setDefaultModel(ctx context.Context, queries *sqlc.Queries, name string) er
 			}
 		}
 
-		// Partial match on ID or display name
 		if match == nil {
 			if strings.Contains(idLower, nameLower) || strings.Contains(displayLower, nameLower) {
 				match = m
@@ -135,8 +125,7 @@ func setDefaultModel(ctx context.Context, queries *sqlc.Queries, name string) er
 		return fmt.Errorf("model not found")
 	}
 
-	// Set as default
-	if err := queries.SetDefaultModelPricing(ctx, match.ID); err != nil {
+	if err := app.PricingRepo.SetDefault(ctx, match.ID); err != nil {
 		return fmt.Errorf("failed to set default: %w", err)
 	}
 

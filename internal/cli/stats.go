@@ -7,8 +7,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/emiliopalmerini/mclaude/internal/domain"
 	"github.com/emiliopalmerini/mclaude/internal/util"
-	sqlc "github.com/emiliopalmerini/mclaude/sqlc/generated"
 )
 
 var statsCmd = &cobra.Command{
@@ -40,128 +40,57 @@ func init() {
 	statsCmd.Flags().StringVar(&statsProject, "project", "", "Filter by project ID")
 }
 
-// Stats holds the aggregate statistics
-type Stats struct {
-	SessionCount           int64
-	TotalUserMessages      int64
-	TotalAssistantMessages int64
-	TotalTurns             int64
-	TotalTokenInput        int64
-	TotalTokenOutput       int64
-	TotalTokenCacheRead    int64
-	TotalTokenCacheWrite   int64
-	TotalCostUsd           float64
-	TotalErrors            int64
-}
-
 func runStats(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 
-	queries := app.Queries
-
-	// Calculate start date based on period
 	startDate := getStartDate(statsPeriod)
 
-	var stats Stats
+	var stats *domain.AggregateStats
 	var filterLabel string
 
 	if statsExperiment != "" {
-		// Get experiment ID by name
-		exp, err := queries.GetExperimentByName(ctx, statsExperiment)
+		exp, err := app.ExperimentRepo.GetByName(ctx, statsExperiment)
 		if err != nil {
+			return fmt.Errorf("failed to get experiment: %w", err)
+		}
+		if exp == nil {
 			return fmt.Errorf("experiment %q not found", statsExperiment)
 		}
 
-		row, err := queries.GetAggregateStatsByExperiment(ctx, sqlc.GetAggregateStatsByExperimentParams{
-			ExperimentID: util.NullString(exp.ID),
-			CreatedAt:    startDate,
-		})
+		stats, err = app.StatsRepo.GetAggregateByExperiment(ctx, exp.ID, startDate)
 		if err != nil {
 			return fmt.Errorf("failed to get stats: %w", err)
 		}
-		stats = statsFromExperimentRow(row)
 		filterLabel = fmt.Sprintf("Experiment: %s", statsExperiment)
 	} else if statsProject != "" {
-		row, err := queries.GetAggregateStatsByProject(ctx, sqlc.GetAggregateStatsByProjectParams{
-			ProjectID: statsProject,
-			CreatedAt: startDate,
-		})
+		var err error
+		stats, err = app.StatsRepo.GetAggregateByProject(ctx, statsProject, startDate)
 		if err != nil {
 			return fmt.Errorf("failed to get stats: %w", err)
 		}
-		stats = statsFromProjectRow(row)
 		filterLabel = fmt.Sprintf("Project: %s", truncate(statsProject, 16))
 	} else {
-		row, err := queries.GetAggregateStats(ctx, startDate)
+		var err error
+		stats, err = app.StatsRepo.GetAggregate(ctx, startDate)
 		if err != nil {
 			return fmt.Errorf("failed to get stats: %w", err)
 		}
-		stats = statsFromRow(row)
 		filterLabel = "All sessions"
 	}
 
 	// Get active experiment
-	activeExp, _ := queries.GetActiveExperiment(ctx)
 	activeExpName := "-"
-	if activeExp.Name != "" {
+	activeExp, _ := app.ExperimentRepo.GetActive(ctx)
+	if activeExp != nil {
 		activeExpName = activeExp.Name
 	}
 
 	// Get top tools
-	tools, _ := queries.GetTopToolsUsage(ctx, sqlc.GetTopToolsUsageParams{
-		CreatedAt: startDate,
-		Limit:     5,
-	})
+	tools, _ := app.StatsRepo.GetTopTools(ctx, startDate, 5)
 
-	// Print stats
 	printStats(stats, filterLabel, statsPeriod, activeExpName, tools)
 
 	return nil
-}
-
-func statsFromRow(row sqlc.GetAggregateStatsRow) Stats {
-	return Stats{
-		SessionCount:           row.SessionCount,
-		TotalUserMessages:      util.ToInt64(row.TotalUserMessages),
-		TotalAssistantMessages: util.ToInt64(row.TotalAssistantMessages),
-		TotalTurns:             util.ToInt64(row.TotalTurns),
-		TotalTokenInput:        util.ToInt64(row.TotalTokenInput),
-		TotalTokenOutput:       util.ToInt64(row.TotalTokenOutput),
-		TotalTokenCacheRead:    util.ToInt64(row.TotalTokenCacheRead),
-		TotalTokenCacheWrite:   util.ToInt64(row.TotalTokenCacheWrite),
-		TotalCostUsd:           util.ToFloat64(row.TotalCostUsd),
-		TotalErrors:            util.ToInt64(row.TotalErrors),
-	}
-}
-
-func statsFromExperimentRow(row sqlc.GetAggregateStatsByExperimentRow) Stats {
-	return Stats{
-		SessionCount:           row.SessionCount,
-		TotalUserMessages:      util.ToInt64(row.TotalUserMessages),
-		TotalAssistantMessages: util.ToInt64(row.TotalAssistantMessages),
-		TotalTurns:             util.ToInt64(row.TotalTurns),
-		TotalTokenInput:        util.ToInt64(row.TotalTokenInput),
-		TotalTokenOutput:       util.ToInt64(row.TotalTokenOutput),
-		TotalTokenCacheRead:    util.ToInt64(row.TotalTokenCacheRead),
-		TotalTokenCacheWrite:   util.ToInt64(row.TotalTokenCacheWrite),
-		TotalCostUsd:           util.ToFloat64(row.TotalCostUsd),
-		TotalErrors:            util.ToInt64(row.TotalErrors),
-	}
-}
-
-func statsFromProjectRow(row sqlc.GetAggregateStatsByProjectRow) Stats {
-	return Stats{
-		SessionCount:           row.SessionCount,
-		TotalUserMessages:      util.ToInt64(row.TotalUserMessages),
-		TotalAssistantMessages: util.ToInt64(row.TotalAssistantMessages),
-		TotalTurns:             util.ToInt64(row.TotalTurns),
-		TotalTokenInput:        util.ToInt64(row.TotalTokenInput),
-		TotalTokenOutput:       util.ToInt64(row.TotalTokenOutput),
-		TotalTokenCacheRead:    util.ToInt64(row.TotalTokenCacheRead),
-		TotalTokenCacheWrite:   util.ToInt64(row.TotalTokenCacheWrite),
-		TotalCostUsd:           util.ToFloat64(row.TotalCostUsd),
-		TotalErrors:            util.ToInt64(row.TotalErrors),
-	}
 }
 
 func getStartDate(period string) string {
@@ -172,7 +101,6 @@ func getStartDate(period string) string {
 	case "today":
 		start = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 	case "week":
-		// Start of current week (Monday)
 		weekday := int(now.Weekday())
 		if weekday == 0 {
 			weekday = 7
@@ -181,14 +109,13 @@ func getStartDate(period string) string {
 	case "month":
 		start = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
 	default:
-		// All time - use Unix epoch
 		start = time.Unix(0, 0)
 	}
 
 	return start.Format(time.RFC3339)
 }
 
-func printStats(stats Stats, filterLabel, period, activeExp string, tools []sqlc.GetTopToolsUsageRow) {
+func printStats(stats *domain.AggregateStats, filterLabel, period, activeExp string, tools []domain.ToolUsageStats) {
 	periodLabel := "All time"
 	switch period {
 	case "today":
@@ -237,11 +164,7 @@ func printStats(stats Stats, filterLabel, period, activeExp string, tools []sqlc
 		fmt.Printf("  Top Tools\n")
 		fmt.Printf("  ---------\n")
 		for _, tool := range tools {
-			invocations := int64(0)
-			if tool.TotalInvocations.Valid {
-				invocations = int64(tool.TotalInvocations.Float64)
-			}
-			fmt.Printf("  %-18s %s calls\n", tool.ToolName, util.FormatNumber(invocations))
+			fmt.Printf("  %-18s %s calls\n", tool.ToolName, util.FormatNumber(tool.TotalInvocations))
 		}
 		fmt.Println()
 	}

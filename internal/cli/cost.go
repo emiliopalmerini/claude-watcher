@@ -9,8 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/emiliopalmerini/mclaude/internal/util"
-	sqlc "github.com/emiliopalmerini/mclaude/sqlc/generated"
+	"github.com/emiliopalmerini/mclaude/internal/domain"
 )
 
 var costCmd = &cobra.Command{
@@ -54,14 +53,14 @@ var costDeleteCmd = &cobra.Command{
 
 // Flags
 var (
-	costInput            float64
-	costOutput           float64
-	costCacheRead        float64
-	costCacheWrite       float64
-	costName             string
-	costLongInput        float64
-	costLongOutput       float64
-	costLongThreshold    int64
+	costInput         float64
+	costOutput        float64
+	costCacheRead     float64
+	costCacheWrite    float64
+	costName          string
+	costLongInput     float64
+	costLongOutput    float64
+	costLongThreshold int64
 )
 
 func init() {
@@ -86,9 +85,8 @@ func init() {
 
 func runCostList(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
-	queries := app.Queries
 
-	pricing, err := queries.ListModelPricing(ctx)
+	pricing, err := app.PricingRepo.List(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to list pricing: %w", err)
 	}
@@ -105,23 +103,23 @@ func runCostList(cmd *cobra.Command, args []string) error {
 
 	for _, p := range pricing {
 		cacheRead := "-"
-		if p.CacheReadPerMillion.Valid {
-			cacheRead = fmt.Sprintf("$%.2f", p.CacheReadPerMillion.Float64)
+		if p.CacheReadPerMillion != nil {
+			cacheRead = fmt.Sprintf("$%.2f", *p.CacheReadPerMillion)
 		}
 		cacheWrite := "-"
-		if p.CacheWritePerMillion.Valid {
-			cacheWrite = fmt.Sprintf("$%.2f", p.CacheWritePerMillion.Float64)
+		if p.CacheWritePerMillion != nil {
+			cacheWrite = fmt.Sprintf("$%.2f", *p.CacheWritePerMillion)
 		}
 		longInput := "-"
-		if p.LongContextInputPerMillion.Valid {
-			longInput = fmt.Sprintf("$%.2f", p.LongContextInputPerMillion.Float64)
+		if p.LongContextInputPerMillion != nil {
+			longInput = fmt.Sprintf("$%.2f", *p.LongContextInputPerMillion)
 		}
 		longOutput := "-"
-		if p.LongContextOutputPerMillion.Valid {
-			longOutput = fmt.Sprintf("$%.2f", p.LongContextOutputPerMillion.Float64)
+		if p.LongContextOutputPerMillion != nil {
+			longOutput = fmt.Sprintf("$%.2f", *p.LongContextOutputPerMillion)
 		}
 		isDefault := ""
-		if p.IsDefault == 1 {
+		if p.IsDefault {
 			isDefault = "*"
 		}
 
@@ -137,76 +135,51 @@ func runCostList(cmd *cobra.Command, args []string) error {
 func runCostSet(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 	modelID := args[0]
-	queries := app.Queries
 
 	displayName := costName
 	if displayName == "" {
 		displayName = modelID
 	}
 
-	// Check if exists
-	existing, err := queries.GetModelPricingByID(ctx, modelID)
-	if err == nil && existing.ID != "" {
-		// Update existing
-		params := sqlc.UpdateModelPricingParams{
-			ID:               modelID,
-			DisplayName:      displayName,
-			InputPerMillion:  costInput,
-			OutputPerMillion: costOutput,
-			IsDefault:        existing.IsDefault,
-		}
-		if costCacheRead > 0 {
-			params.CacheReadPerMillion = util.NullFloat64Zero(&costCacheRead)
-		}
-		if costCacheWrite > 0 {
-			params.CacheWritePerMillion = util.NullFloat64Zero(&costCacheWrite)
-		}
-		if costLongInput > 0 {
-			params.LongContextInputPerMillion = util.NullFloat64Zero(&costLongInput)
-		}
-		if costLongOutput > 0 {
-			params.LongContextOutputPerMillion = util.NullFloat64Zero(&costLongOutput)
-		}
-		if costLongInput > 0 || costLongOutput > 0 {
-			params.LongContextThreshold = util.NullInt64(&costLongThreshold)
-		}
+	pricing := &domain.ModelPricing{
+		ID:              modelID,
+		DisplayName:     displayName,
+		InputPerMillion: costInput,
+		OutputPerMillion: costOutput,
+		CreatedAt:       time.Now().UTC(),
+	}
 
-		if err := queries.UpdateModelPricing(ctx, params); err != nil {
+	if costCacheRead > 0 {
+		pricing.CacheReadPerMillion = &costCacheRead
+	}
+	if costCacheWrite > 0 {
+		pricing.CacheWritePerMillion = &costCacheWrite
+	}
+	if costLongInput > 0 {
+		pricing.LongContextInputPerMillion = &costLongInput
+	}
+	if costLongOutput > 0 {
+		pricing.LongContextOutputPerMillion = &costLongOutput
+	}
+	if costLongInput > 0 || costLongOutput > 0 {
+		pricing.LongContextThreshold = &costLongThreshold
+	}
+
+	existing, _ := app.PricingRepo.GetByID(ctx, modelID)
+	if existing != nil {
+		pricing.IsDefault = existing.IsDefault
+		pricing.CreatedAt = existing.CreatedAt
+		if err := app.PricingRepo.Update(ctx, pricing); err != nil {
 			return fmt.Errorf("failed to update pricing: %w", err)
 		}
 		fmt.Printf("Updated pricing for %s\n", modelID)
 	} else {
-		// Create new
-		params := sqlc.CreateModelPricingParams{
-			ID:               modelID,
-			DisplayName:      displayName,
-			InputPerMillion:  costInput,
-			OutputPerMillion: costOutput,
-			CreatedAt:        time.Now().UTC().Format(time.RFC3339),
-		}
-		if costCacheRead > 0 {
-			params.CacheReadPerMillion = util.NullFloat64Zero(&costCacheRead)
-		}
-		if costCacheWrite > 0 {
-			params.CacheWritePerMillion = util.NullFloat64Zero(&costCacheWrite)
-		}
-		if costLongInput > 0 {
-			params.LongContextInputPerMillion = util.NullFloat64Zero(&costLongInput)
-		}
-		if costLongOutput > 0 {
-			params.LongContextOutputPerMillion = util.NullFloat64Zero(&costLongOutput)
-		}
-		if costLongInput > 0 || costLongOutput > 0 {
-			params.LongContextThreshold = util.NullInt64(&costLongThreshold)
-		}
-
-		// Check if this is the first pricing - make it default
-		allPricing, _ := queries.ListModelPricing(ctx)
+		allPricing, _ := app.PricingRepo.List(ctx)
 		if len(allPricing) == 0 {
-			params.IsDefault = 1
+			pricing.IsDefault = true
 		}
 
-		if err := queries.CreateModelPricing(ctx, params); err != nil {
+		if err := app.PricingRepo.Create(ctx, pricing); err != nil {
 			return fmt.Errorf("failed to create pricing: %w", err)
 		}
 		fmt.Printf("Created pricing for %s\n", modelID)
@@ -218,15 +191,13 @@ func runCostSet(cmd *cobra.Command, args []string) error {
 func runCostDefault(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 	modelID := args[0]
-	queries := app.Queries
 
-	// Check if exists
-	existing, err := queries.GetModelPricingByID(ctx, modelID)
-	if err != nil || existing.ID == "" {
+	existing, _ := app.PricingRepo.GetByID(ctx, modelID)
+	if existing == nil {
 		return fmt.Errorf("model %q not found", modelID)
 	}
 
-	if err := queries.SetDefaultModelPricing(ctx, modelID); err != nil {
+	if err := app.PricingRepo.SetDefault(ctx, modelID); err != nil {
 		return fmt.Errorf("failed to set default: %w", err)
 	}
 
@@ -237,9 +208,8 @@ func runCostDefault(cmd *cobra.Command, args []string) error {
 func runCostDelete(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 	modelID := args[0]
-	queries := app.Queries
 
-	if err := queries.DeleteModelPricing(ctx, modelID); err != nil {
+	if err := app.PricingRepo.Delete(ctx, modelID); err != nil {
 		return fmt.Errorf("failed to delete pricing: %w", err)
 	}
 

@@ -7,13 +7,11 @@ import (
 	"github.com/emiliopalmerini/mclaude/internal/adapters/storage"
 	"github.com/emiliopalmerini/mclaude/internal/adapters/turso"
 	"github.com/emiliopalmerini/mclaude/internal/ports"
-	sqlc "github.com/emiliopalmerini/mclaude/sqlc/generated"
 )
 
 // AppContext holds all shared dependencies for CLI commands.
 type AppContext struct {
 	DB               *turso.DB
-	Queries          *sqlc.Queries // transitional: will be removed once all commands use repos
 	SessionRepo      ports.SessionRepository
 	MetricsRepo      ports.SessionMetricsRepository
 	ToolRepo         ports.SessionToolRepository
@@ -24,9 +22,10 @@ type AppContext struct {
 	ProjectRepo      ports.ProjectRepository
 	PricingRepo      ports.PricingRepository
 	QualityRepo      ports.SessionQualityRepository
-	PlanConfigRepo   ports.PlanConfigRepository
+	PlanConfigRepo    ports.PlanConfigRepository
+	StatsRepo         ports.StatsRepository
 	TranscriptStorage ports.TranscriptStorage
-	PrometheusClient ports.PrometheusClient
+	PrometheusClient  ports.PrometheusClient
 }
 
 // NewAppContext creates an AppContext with all dependencies initialized.
@@ -52,7 +51,6 @@ func NewAppContext() (*AppContext, error) {
 
 	return &AppContext{
 		DB:                db,
-		Queries:           sqlc.New(db.DB),
 		SessionRepo:       turso.NewSessionRepository(db.DB),
 		MetricsRepo:       turso.NewSessionMetricsRepository(db.DB),
 		ToolRepo:          turso.NewSessionToolRepository(db.DB),
@@ -64,6 +62,7 @@ func NewAppContext() (*AppContext, error) {
 		PricingRepo:       turso.NewPricingRepository(db.DB),
 		QualityRepo:       turso.NewSessionQualityRepository(db.DB),
 		PlanConfigRepo:    turso.NewPlanConfigRepository(db.DB),
+		StatsRepo:         turso.NewStatsRepository(db.DB),
 		TranscriptStorage: transcriptStorage,
 		PrometheusClient:  promClient,
 	}, nil

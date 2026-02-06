@@ -115,6 +115,42 @@ func (r *SessionRepository) DeleteByExperiment(ctx context.Context, experimentID
 	return r.queries.DeleteSessionsByExperiment(ctx, util.NullStringPtr(&experimentID))
 }
 
+func (r *SessionRepository) GetTranscriptPathsBefore(ctx context.Context, before string) ([]domain.TranscriptPathInfo, error) {
+	rows, err := r.queries.GetSessionTranscriptPathsBefore(ctx, before)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get transcript paths: %w", err)
+	}
+	paths := make([]domain.TranscriptPathInfo, len(rows))
+	for i, row := range rows {
+		paths[i] = domain.TranscriptPathInfo{ID: row.ID, TranscriptPath: row.TranscriptStoredPath.String}
+	}
+	return paths, nil
+}
+
+func (r *SessionRepository) GetTranscriptPathsByProject(ctx context.Context, projectID string) ([]domain.TranscriptPathInfo, error) {
+	rows, err := r.queries.GetSessionTranscriptPathsByProject(ctx, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get transcript paths: %w", err)
+	}
+	paths := make([]domain.TranscriptPathInfo, len(rows))
+	for i, row := range rows {
+		paths[i] = domain.TranscriptPathInfo{ID: row.ID, TranscriptPath: row.TranscriptStoredPath.String}
+	}
+	return paths, nil
+}
+
+func (r *SessionRepository) GetTranscriptPathsByExperiment(ctx context.Context, experimentID string) ([]domain.TranscriptPathInfo, error) {
+	rows, err := r.queries.GetSessionTranscriptPathsByExperiment(ctx, util.NullStringPtr(&experimentID))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get transcript paths: %w", err)
+	}
+	paths := make([]domain.TranscriptPathInfo, len(rows))
+	for i, row := range rows {
+		paths[i] = domain.TranscriptPathInfo{ID: row.ID, TranscriptPath: row.TranscriptStoredPath.String}
+	}
+	return paths, nil
+}
+
 func sessionFromRow(row sqlc.Session) *domain.Session {
 	createdAt, _ := time.Parse(time.RFC3339, row.CreatedAt)
 

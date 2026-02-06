@@ -9,8 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/emiliopalmerini/mclaude/internal/util"
-	sqlc "github.com/emiliopalmerini/mclaude/sqlc/generated"
+	"github.com/emiliopalmerini/mclaude/internal/ports"
 )
 
 var exportCmd = &cobra.Command{
@@ -72,32 +71,27 @@ type ExportSession struct {
 
 func runExportSessions(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
-	queries := app.Queries
 
-	var err error
-	var sessions []sqlc.Session
-
-	if exportExperiment != "" {
-		exp, err := queries.GetExperimentByName(ctx, exportExperiment)
-		if err != nil {
-			return fmt.Errorf("experiment %q not found", exportExperiment)
-		}
-
-		sessions, err = queries.ListSessionsByExperiment(ctx, sqlc.ListSessionsByExperimentParams{
-			ExperimentID: util.NullString(exp.ID),
-			Limit:        int64(exportLimit),
-		})
-		if err != nil {
-			return fmt.Errorf("failed to list sessions: %w", err)
-		}
-	} else {
-		sessions, err = queries.ListSessions(ctx, int64(exportLimit))
-		if err != nil {
-			return fmt.Errorf("failed to list sessions: %w", err)
-		}
+	opts := ports.ListSessionsOptions{
+		Limit: exportLimit,
 	}
 
-	// Build export data with metrics
+	if exportExperiment != "" {
+		exp, err := app.ExperimentRepo.GetByName(ctx, exportExperiment)
+		if err != nil {
+			return fmt.Errorf("failed to get experiment: %w", err)
+		}
+		if exp == nil {
+			return fmt.Errorf("experiment %q not found", exportExperiment)
+		}
+		opts.ExperimentID = &exp.ID
+	}
+
+	sessions, err := app.SessionRepo.List(ctx, opts)
+	if err != nil {
+		return fmt.Errorf("failed to list sessions: %w", err)
+	}
+
 	exportData := make([]ExportSession, 0, len(sessions))
 	for _, s := range sessions {
 		es := ExportSession{
@@ -106,25 +100,24 @@ func runExportSessions(cmd *cobra.Command, args []string) error {
 			Cwd:            s.Cwd,
 			PermissionMode: s.PermissionMode,
 			ExitReason:     s.ExitReason,
-			CreatedAt:      s.CreatedAt,
+			CreatedAt:      s.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		}
 
-		if s.ExperimentID.Valid {
-			es.ExperimentID = s.ExperimentID.String
+		if s.ExperimentID != nil {
+			es.ExperimentID = *s.ExperimentID
 		}
-		if s.StartedAt.Valid {
-			es.StartedAt = s.StartedAt.String
+		if s.StartedAt != nil {
+			es.StartedAt = s.StartedAt.Format("2006-01-02T15:04:05Z07:00")
 		}
-		if s.EndedAt.Valid {
-			es.EndedAt = s.EndedAt.String
+		if s.EndedAt != nil {
+			es.EndedAt = s.EndedAt.Format("2006-01-02T15:04:05Z07:00")
 		}
-		if s.DurationSeconds.Valid {
-			es.DurationSeconds = s.DurationSeconds.Int64
+		if s.DurationSeconds != nil {
+			es.DurationSeconds = *s.DurationSeconds
 		}
 
-		// Get metrics
-		m, err := queries.GetSessionMetricsBySessionID(ctx, s.ID)
-		if err == nil {
+		m, err := app.MetricsRepo.GetBySessionID(ctx, s.ID)
+		if err == nil && m != nil {
 			es.MessageCountUser = m.MessageCountUser
 			es.MessageCountAssistant = m.MessageCountAssistant
 			es.TurnCount = m.TurnCount
@@ -133,15 +126,14 @@ func runExportSessions(cmd *cobra.Command, args []string) error {
 			es.TokenCacheRead = m.TokenCacheRead
 			es.TokenCacheWrite = m.TokenCacheWrite
 			es.ErrorCount = m.ErrorCount
-			if m.CostEstimateUsd.Valid {
-				es.CostEstimateUsd = m.CostEstimateUsd.Float64
+			if m.CostEstimateUSD != nil {
+				es.CostEstimateUsd = *m.CostEstimateUSD
 			}
 		}
 
 		exportData = append(exportData, es)
 	}
 
-	// Determine output
 	var output *os.File
 	if exportOutput != "" {
 		output, err = os.Create(exportOutput)
@@ -153,7 +145,6 @@ func runExportSessions(cmd *cobra.Command, args []string) error {
 		output = os.Stdout
 	}
 
-	// Write output
 	switch exportFormat {
 	case "json":
 		encoder := json.NewEncoder(output)
@@ -165,7 +156,6 @@ func runExportSessions(cmd *cobra.Command, args []string) error {
 		writer := csv.NewWriter(output)
 		defer writer.Flush()
 
-		// Header
 		header := []string{
 			"id", "project_id", "experiment_id", "cwd", "permission_mode", "exit_reason",
 			"started_at", "ended_at", "duration_seconds", "created_at",
@@ -177,7 +167,6 @@ func runExportSessions(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to write CSV header: %w", err)
 		}
 
-		// Rows
 		for _, es := range exportData {
 			row := []string{
 				es.ID, es.ProjectID, es.ExperimentID, es.Cwd, es.PermissionMode, es.ExitReason,

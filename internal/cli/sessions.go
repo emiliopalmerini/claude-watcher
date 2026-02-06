@@ -2,15 +2,14 @@ package cli
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"os"
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
+	"github.com/emiliopalmerini/mclaude/internal/ports"
 	"github.com/emiliopalmerini/mclaude/internal/util"
-	sqlc "github.com/emiliopalmerini/mclaude/sqlc/generated"
 )
 
 var sessionsCmd = &cobra.Command{
@@ -51,38 +50,26 @@ func init() {
 func runSessionsList(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 
-	queries := app.Queries
-
-	var err error
-	var sessions []sqlc.Session
+	opts := ports.ListSessionsOptions{
+		Limit: sessionsLast,
+	}
 
 	if sessionsExperiment != "" {
-		// Get experiment ID by name
-		exp, err := queries.GetExperimentByName(ctx, sessionsExperiment)
+		exp, err := app.ExperimentRepo.GetByName(ctx, sessionsExperiment)
 		if err != nil {
+			return fmt.Errorf("failed to get experiment: %w", err)
+		}
+		if exp == nil {
 			return fmt.Errorf("experiment %q not found", sessionsExperiment)
 		}
-
-		sessions, err = queries.ListSessionsByExperiment(ctx, sqlc.ListSessionsByExperimentParams{
-			ExperimentID: sql.NullString{String: exp.ID, Valid: true},
-			Limit:        int64(sessionsLast),
-		})
-		if err != nil {
-			return fmt.Errorf("failed to list sessions: %w", err)
-		}
+		opts.ExperimentID = &exp.ID
 	} else if sessionsProject != "" {
-		sessions, err = queries.ListSessionsByProject(ctx, sqlc.ListSessionsByProjectParams{
-			ProjectID: sessionsProject,
-			Limit:     int64(sessionsLast),
-		})
-		if err != nil {
-			return fmt.Errorf("failed to list sessions: %w", err)
-		}
-	} else {
-		sessions, err = queries.ListSessions(ctx, int64(sessionsLast))
-		if err != nil {
-			return fmt.Errorf("failed to list sessions: %w", err)
-		}
+		opts.ProjectID = &sessionsProject
+	}
+
+	sessions, err := app.SessionRepo.List(ctx, opts)
+	if err != nil {
+		return fmt.Errorf("failed to list sessions: %w", err)
 	}
 
 	if len(sessions) == 0 {
@@ -90,49 +77,28 @@ func runSessionsList(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// Get metrics for each session
-	type sessionWithMetrics struct {
-		session sqlc.Session
-		metrics *sqlc.SessionMetric
-	}
-
-	sessionsWithMetrics := make([]sessionWithMetrics, len(sessions))
-	for i, s := range sessions {
-		sessionsWithMetrics[i].session = s
-		m, err := queries.GetSessionMetricsBySessionID(ctx, s.ID)
-		if err == nil {
-			sessionsWithMetrics[i].metrics = &m
-		}
-	}
-
-	// Print table
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(w, "ID\tDATE\tTURNS\tTOKENS\tCOST\tREASON")
 	fmt.Fprintln(w, "--\t----\t-----\t------\t----\t------")
 
-	for _, sm := range sessionsWithMetrics {
-		s := sm.session
-		m := sm.metrics
-
-		// Format session ID (first 12 chars)
+	for _, s := range sessions {
 		id := s.ID
 		if len(id) > 12 {
 			id = id[:12]
 		}
 
-		// Format date
-		date := util.FormatDateTime(s.CreatedAt)
+		date := util.FormatDateTime(s.CreatedAt.Format("2006-01-02T15:04:05Z07:00"))
 
-		// Format metrics
 		turns := "-"
 		tokens := "-"
 		cost := "-"
-		if m != nil {
+		m, err := app.MetricsRepo.GetBySessionID(ctx, s.ID)
+		if err == nil && m != nil {
 			turns = fmt.Sprintf("%d", m.TurnCount)
 			totalTokens := m.TokenInput + m.TokenOutput
 			tokens = util.FormatNumber(totalTokens)
-			if m.CostEstimateUsd.Valid {
-				cost = fmt.Sprintf("$%.4f", m.CostEstimateUsd.Float64)
+			if m.CostEstimateUSD != nil {
+				cost = fmt.Sprintf("$%.4f", *m.CostEstimateUSD)
 			}
 		}
 

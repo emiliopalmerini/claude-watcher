@@ -14,6 +14,9 @@ type SessionRepository interface {
 	DeleteBefore(ctx context.Context, before string) (int64, error)
 	DeleteByProject(ctx context.Context, projectID string) (int64, error)
 	DeleteByExperiment(ctx context.Context, experimentID string) (int64, error)
+	GetTranscriptPathsBefore(ctx context.Context, before string) ([]domain.TranscriptPathInfo, error)
+	GetTranscriptPathsByProject(ctx context.Context, projectID string) ([]domain.TranscriptPathInfo, error)
+	GetTranscriptPathsByExperiment(ctx context.Context, experimentID string) ([]domain.TranscriptPathInfo, error)
 }
 
 type ListSessionsOptions struct {

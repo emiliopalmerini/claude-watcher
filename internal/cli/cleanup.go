@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/emiliopalmerini/mclaude/internal/util"
+	"github.com/emiliopalmerini/mclaude/internal/domain"
 )
 
 var cleanupCmd = &cobra.Command{
@@ -49,67 +49,54 @@ func runCleanup(cmd *cobra.Command, args []string) error {
 	}
 
 	ctx := context.Background()
-	queries := app.Queries
-	transcriptStorage := app.TranscriptStorage
 
-	var sessionsToDelete []sessionInfo
+	var sessionsToDelete []domain.TranscriptPathInfo
 
 	if cleanupSession != "" {
-		// Delete specific session
-		session, err := queries.GetSessionByID(ctx, cleanupSession)
+		session, err := app.SessionRepo.GetByID(ctx, cleanupSession)
 		if err != nil {
+			return fmt.Errorf("failed to get session: %w", err)
+		}
+		if session == nil {
 			return fmt.Errorf("session %q not found", cleanupSession)
 		}
-		sessionsToDelete = []sessionInfo{{
-			id:             session.ID,
-			transcriptPath: session.TranscriptStoredPath.String,
+		path := ""
+		if session.TranscriptStoredPath != nil {
+			path = *session.TranscriptStoredPath
+		}
+		sessionsToDelete = []domain.TranscriptPathInfo{{
+			ID:             session.ID,
+			TranscriptPath: path,
 		}}
 	} else if cleanupBefore != "" {
-		// Parse date
 		beforeDate, err := time.Parse("2006-01-02", cleanupBefore)
 		if err != nil {
 			return fmt.Errorf("invalid date format: %s (use YYYY-MM-DD)", cleanupBefore)
 		}
 		beforeStr := beforeDate.Format(time.RFC3339)
 
-		// Get sessions to delete
-		paths, err := queries.GetSessionTranscriptPathsBefore(ctx, beforeStr)
+		sessionsToDelete, err = app.SessionRepo.GetTranscriptPathsBefore(ctx, beforeStr)
 		if err != nil {
 			return fmt.Errorf("failed to get sessions: %w", err)
-		}
-		for _, p := range paths {
-			sessionsToDelete = append(sessionsToDelete, sessionInfo{
-				id:             p.ID,
-				transcriptPath: p.TranscriptStoredPath.String,
-			})
 		}
 	} else if cleanupProject != "" {
-		paths, err := queries.GetSessionTranscriptPathsByProject(ctx, cleanupProject)
+		var err error
+		sessionsToDelete, err = app.SessionRepo.GetTranscriptPathsByProject(ctx, cleanupProject)
 		if err != nil {
 			return fmt.Errorf("failed to get sessions: %w", err)
 		}
-		for _, p := range paths {
-			sessionsToDelete = append(sessionsToDelete, sessionInfo{
-				id:             p.ID,
-				transcriptPath: p.TranscriptStoredPath.String,
-			})
-		}
 	} else if cleanupExperiment != "" {
-		// Get experiment ID
-		exp, err := queries.GetExperimentByName(ctx, cleanupExperiment)
+		exp, err := app.ExperimentRepo.GetByName(ctx, cleanupExperiment)
 		if err != nil {
+			return fmt.Errorf("failed to get experiment: %w", err)
+		}
+		if exp == nil {
 			return fmt.Errorf("experiment %q not found", cleanupExperiment)
 		}
 
-		paths, err := queries.GetSessionTranscriptPathsByExperiment(ctx, util.NullString(exp.ID))
+		sessionsToDelete, err = app.SessionRepo.GetTranscriptPathsByExperiment(ctx, exp.ID)
 		if err != nil {
 			return fmt.Errorf("failed to get sessions: %w", err)
-		}
-		for _, p := range paths {
-			sessionsToDelete = append(sessionsToDelete, sessionInfo{
-				id:             p.ID,
-				transcriptPath: p.TranscriptStoredPath.String,
-			})
 		}
 	}
 
@@ -121,24 +108,21 @@ func runCleanup(cmd *cobra.Command, args []string) error {
 	if cleanupDryRun {
 		fmt.Printf("Would delete %d session(s):\n", len(sessionsToDelete))
 		for _, s := range sessionsToDelete {
-			fmt.Printf("  - %s\n", s.id)
+			fmt.Printf("  - %s\n", s.ID)
 		}
 		return nil
 	}
 
-	// Delete sessions and transcripts
 	deleted := 0
 	for _, s := range sessionsToDelete {
-		// Delete transcript file
-		if s.transcriptPath != "" {
-			if err := transcriptStorage.Delete(ctx, s.id); err != nil {
-				fmt.Printf("Warning: failed to delete transcript for %s: %v\n", s.id, err)
+		if s.TranscriptPath != "" {
+			if err := app.TranscriptStorage.Delete(ctx, s.ID); err != nil {
+				fmt.Printf("Warning: failed to delete transcript for %s: %v\n", s.ID, err)
 			}
 		}
 
-		// Delete session (cascades to metrics, tools, files, commands)
-		if err := queries.DeleteSession(ctx, s.id); err != nil {
-			fmt.Printf("Warning: failed to delete session %s: %v\n", s.id, err)
+		if err := app.SessionRepo.Delete(ctx, s.ID); err != nil {
+			fmt.Printf("Warning: failed to delete session %s: %v\n", s.ID, err)
 			continue
 		}
 		deleted++
@@ -146,9 +130,4 @@ func runCleanup(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("Deleted %d session(s)\n", deleted)
 	return nil
-}
-
-type sessionInfo struct {
-	id             string
-	transcriptPath string
 }
