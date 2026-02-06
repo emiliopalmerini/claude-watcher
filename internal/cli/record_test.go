@@ -141,17 +141,19 @@ func runRecordTest(t *testing.T, db *sql.DB) {
 		t.Fatalf("Failed to get metrics: %v", err)
 	}
 
-	// Expected: 2 user messages, 4 assistant messages
-	assertEqual(t, "metrics.MessageCountUser", int64(2), metrics.MessageCountUser)
-	assertEqual(t, "metrics.MessageCountAssistant", int64(4), metrics.MessageCountAssistant)
+	// Expected: 3 user messages (2 original + 1 sub-agent result), 5 assistant messages (4 original + 1 Task tool_use)
+	assertEqual(t, "metrics.MessageCountUser", int64(3), metrics.MessageCountUser)
+	assertEqual(t, "metrics.MessageCountAssistant", int64(5), metrics.MessageCountAssistant)
 
-	// Expected tokens: 100+150+50+30 = 330 input, 50+75+25+15 = 165 output
-	assertEqual(t, "metrics.TokenInput", int64(330), metrics.TokenInput)
-	assertEqual(t, "metrics.TokenOutput", int64(165), metrics.TokenOutput)
+	// Expected tokens: parent (100+150+50+40+30=370) + subagent (6000) = 6370 input
+	// parent (50+75+25+20+15=185) + subagent (230) = 415 output
+	assertEqual(t, "metrics.TokenInput", int64(6370), metrics.TokenInput)
+	assertEqual(t, "metrics.TokenOutput", int64(415), metrics.TokenOutput)
 
-	// Expected cache tokens: 20+30+10+5 = 65 read, 10+15+5+3 = 33 write
-	assertEqual(t, "metrics.TokenCacheRead", int64(65), metrics.TokenCacheRead)
-	assertEqual(t, "metrics.TokenCacheWrite", int64(33), metrics.TokenCacheWrite)
+	// Expected cache tokens: parent (20+30+10+8+5=73) + subagent (1500) = 1573 read
+	// parent (10+15+5+4+3=37) + subagent (249) = 286 write
+	assertEqual(t, "metrics.TokenCacheRead", int64(1573), metrics.TokenCacheRead)
+	assertEqual(t, "metrics.TokenCacheWrite", int64(286), metrics.TokenCacheWrite)
 
 	// Verify cost estimate exists (pricing was seeded by migrations)
 	if !metrics.CostEstimateUsd.Valid {
@@ -185,6 +187,7 @@ func runRecordTest(t *testing.T, db *sql.DB) {
 	assertEqual(t, "tool.Read count", int64(1), toolMap["Read"])
 	assertEqual(t, "tool.Edit count", int64(1), toolMap["Edit"])
 	assertEqual(t, "tool.Bash count", int64(1), toolMap["Bash"])
+	assertEqual(t, "tool.Task count", int64(1), toolMap["Task"])
 
 	// Verify files
 	files, err := queries.ListSessionFilesBySessionID(ctx, sessionID)
@@ -214,6 +217,39 @@ func runRecordTest(t *testing.T, db *sql.DB) {
 		t.Fatalf("Expected 1 command, got %d", len(commands))
 	}
 	assertEqual(t, "command.Command", "go build ./...", commands[0].Command)
+
+	// Verify sub-agents
+	subagents, err := queries.ListSessionSubagentsBySessionID(ctx, sessionID)
+	if err != nil {
+		t.Fatalf("Failed to get subagents: %v", err)
+	}
+
+	if len(subagents) != 1 {
+		t.Fatalf("Expected 1 subagent, got %d", len(subagents))
+	}
+	assertEqual(t, "subagent.AgentType", "Explore", subagents[0].AgentType)
+	assertEqual(t, "subagent.AgentKind", "task", subagents[0].AgentKind)
+	assertEqual(t, "subagent.TotalTokens", int64(7979), subagents[0].TotalTokens)
+	assertEqual(t, "subagent.TokenInput", int64(6000), subagents[0].TokenInput)
+	assertEqual(t, "subagent.TokenOutput", int64(230), subagents[0].TokenOutput)
+	assertEqual(t, "subagent.TokenCacheRead", int64(1500), subagents[0].TokenCacheRead)
+	assertEqual(t, "subagent.TokenCacheWrite", int64(249), subagents[0].TokenCacheWrite)
+	assertEqual(t, "subagent.ToolUseCount", int64(2), subagents[0].ToolUseCount)
+	if !subagents[0].TotalDurationMs.Valid {
+		t.Error("Expected subagent duration to be set")
+	} else {
+		assertEqual(t, "subagent.TotalDurationMs", int64(5000), subagents[0].TotalDurationMs.Int64)
+	}
+	if !subagents[0].Description.Valid {
+		t.Error("Expected subagent description to be set")
+	} else {
+		assertEqual(t, "subagent.Description", "Search codebase", subagents[0].Description.String)
+	}
+	if !subagents[0].Model.Valid {
+		t.Error("Expected subagent model to be set")
+	} else {
+		assertEqual(t, "subagent.Model", "haiku", subagents[0].Model.String)
+	}
 
 	// Verify transcript was stored
 	storedPath := session.TranscriptStoredPath

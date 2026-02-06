@@ -161,6 +161,7 @@ func processRecordInput(hookInput *domain.HookInput) error {
 	toolRepo := turso.NewSessionToolRepository(sqlDB)
 	fileRepo := turso.NewSessionFileRepository(sqlDB)
 	commandRepo := turso.NewSessionCommandRepository(sqlDB)
+	subagentRepo := turso.NewSessionSubagentRepository(sqlDB)
 	pricingRepo := turso.NewPricingRepository(sqlDB)
 	qualityRepo := turso.NewSessionQualityRepository(sqlDB)
 	planConfigRepo := turso.NewPlanConfigRepository(sqlDB)
@@ -301,6 +302,30 @@ func processRecordInput(hookInput *domain.HookInput) error {
 		}
 	}
 
+	// Calculate sub-agent cost estimates and save
+	if len(parsed.Subagents) > 0 {
+		for _, sa := range parsed.Subagents {
+			// Try to find pricing for sub-agent model
+			var saPricing *domain.ModelPricing
+			if sa.Model != nil {
+				// Try alias lookup (e.g., "haiku" -> model ID)
+				if modelID := resolveModelAlias(*sa.Model); modelID != "" {
+					saPricing, _ = pricingRepo.GetByID(ctx, modelID)
+				}
+			}
+			if saPricing == nil {
+				saPricing = pricing // Fall back to session's default pricing
+			}
+			if saPricing != nil {
+				cost := saPricing.CalculateCost(sa.TokenInput, sa.TokenOutput, sa.TokenCacheRead, sa.TokenCacheWrite)
+				sa.CostEstimateUSD = &cost
+			}
+		}
+		if err := subagentRepo.CreateBatch(ctx, parsed.Subagents); err != nil {
+			return fmt.Errorf("failed to create session subagents: %w", err)
+		}
+	}
+
 	// Sync to remote if enabled (only for real Turso connection)
 	if tursoDB != nil {
 		if err := tursoDB.Sync(); err != nil {
@@ -320,9 +345,26 @@ func processRecordInput(hookInput *domain.HookInput) error {
 	if costEstimate != nil {
 		fmt.Printf(", $%.4f estimated cost", *costEstimate)
 	}
+	if len(parsed.Subagents) > 0 {
+		fmt.Printf(", %d sub-agents", len(parsed.Subagents))
+	}
 	fmt.Println()
 
 	return nil
+}
+
+// resolveModelAlias maps short model aliases to full model IDs for pricing lookup.
+func resolveModelAlias(alias string) string {
+	aliases := map[string]string{
+		"haiku":  "claude-haiku-4-5-20251001",
+		"sonnet": "claude-sonnet-4-5-20250929",
+		"opus":   "claude-opus-4-6-20260206",
+	}
+	if id, ok := aliases[alias]; ok {
+		return id
+	}
+	// If it's already a full model ID, return as-is
+	return alias
 }
 
 // exportOTELMetrics exports enriched session metrics to OTEL Collector.
