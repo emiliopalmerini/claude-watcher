@@ -2,7 +2,6 @@ package web
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -145,19 +144,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 			avg := qualityStats.AvgOverallRating.Float64
 			stats.AvgOverall = &avg
 		}
-		successCount := int64(0)
-		failureCount := int64(0)
-		if qualityStats.SuccessCount.Valid {
-			successCount = int64(qualityStats.SuccessCount.Float64)
-		}
-		if qualityStats.FailureCount.Valid {
-			failureCount = int64(qualityStats.FailureCount.Float64)
-		}
-		total := successCount + failureCount
-		if total > 0 {
-			rate := float64(successCount) / float64(total)
-			stats.SuccessRate = &rate
-		}
+		stats.SuccessRate = calculateSuccessRate(qualityStats.SuccessCount, qualityStats.FailureCount)
 	}
 
 	templates.Dashboard(stats).Render(ctx, w)
@@ -222,42 +209,11 @@ func (s *Server) handleSessionDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	detail := templates.SessionDetail{
-		ID:             session.ID,
-		ProjectID:      session.ProjectID,
-		Cwd:            session.Cwd,
-		PermissionMode: session.PermissionMode,
-		ExitReason:     session.ExitReason,
-		CreatedAt:      session.CreatedAt,
-	}
-
-	if session.ExperimentID.Valid {
-		detail.ExperimentID = session.ExperimentID.String
-	}
-	if session.StartedAt.Valid {
-		detail.StartedAt = session.StartedAt.String
-	}
-	if session.EndedAt.Valid {
-		detail.EndedAt = session.EndedAt.String
-	}
-	if session.DurationSeconds.Valid {
-		detail.DurationSeconds = session.DurationSeconds.Int64
-	}
-
-	// Get metrics
+	var metrics *sqlc.SessionMetric
 	if m, err := queries.GetSessionMetricsBySessionID(ctx, id); err == nil {
-		detail.MessageCountUser = m.MessageCountUser
-		detail.MessageCountAssistant = m.MessageCountAssistant
-		detail.TurnCount = m.TurnCount
-		detail.TokenInput = m.TokenInput
-		detail.TokenOutput = m.TokenOutput
-		detail.TokenCacheRead = m.TokenCacheRead
-		detail.TokenCacheWrite = m.TokenCacheWrite
-		detail.ErrorCount = m.ErrorCount
-		if m.CostEstimateUsd.Valid {
-			detail.CostEstimateUsd = m.CostEstimateUsd.Float64
-		}
+		metrics = &m
 	}
+	detail := buildSessionDetail(session, metrics)
 
 	// Get tools
 	tools, _ := queries.ListSessionToolsBySessionID(ctx, id)
@@ -477,20 +433,7 @@ func (s *Server) handleExperimentDetail(w http.ResponseWriter, r *http.Request) 
 			avg := qualityStats.AvgEfficiency.Float64
 			detail.AvgEfficiency = &avg
 		}
-		// Calculate success rate
-		successCount := int64(0)
-		failureCount := int64(0)
-		if qualityStats.SuccessCount.Valid {
-			successCount = int64(qualityStats.SuccessCount.Float64)
-		}
-		if qualityStats.FailureCount.Valid {
-			failureCount = int64(qualityStats.FailureCount.Float64)
-		}
-		total := successCount + failureCount
-		if total > 0 {
-			rate := float64(successCount) / float64(total)
-			detail.SuccessRate = &rate
-		}
+		detail.SuccessRate = calculateSuccessRate(qualityStats.SuccessCount, qualityStats.FailureCount)
 	}
 
 	templates.ExperimentDetailPage(detail).Render(ctx, w)
@@ -572,20 +515,7 @@ func (s *Server) handleExperimentCompare(w http.ResponseWriter, r *http.Request)
 				item.AvgEfficiency = &avg
 			}
 
-			// Calculate success rate
-			successCount := int64(0)
-			failureCount := int64(0)
-			if qualityStats.SuccessCount.Valid {
-				successCount = int64(qualityStats.SuccessCount.Float64)
-			}
-			if qualityStats.FailureCount.Valid {
-				failureCount = int64(qualityStats.FailureCount.Float64)
-			}
-			total := successCount + failureCount
-			if total > 0 {
-				rate := float64(successCount) / float64(total)
-				item.SuccessRate = &rate
-			}
+			item.SuccessRate = calculateSuccessRate(qualityStats.SuccessCount, qualityStats.FailureCount)
 		}
 
 		items = append(items, item)
@@ -671,14 +601,7 @@ func (s *Server) handleAPIChartTokens(w http.ResponseWriter, r *http.Request) {
 	sessions := make([]int64, len(stats))
 
 	for i, stat := range stats {
-		switch d := stat.Date.(type) {
-		case time.Time:
-			labels[i] = d.Format("2006-01-02")
-		case string:
-			labels[i] = d
-		default:
-			labels[i] = fmt.Sprintf("%v", stat.Date)
-		}
+		labels[i] = formatChartDate(stat.Date)
 		tokens[i] = util.ToInt64(stat.TotalTokens)
 		sessions[i] = stat.SessionCount
 	}
@@ -710,14 +633,7 @@ func (s *Server) handleAPIChartCost(w http.ResponseWriter, r *http.Request) {
 	costs := make([]float64, len(stats))
 
 	for i, stat := range stats {
-		switch d := stat.Date.(type) {
-		case time.Time:
-			labels[i] = d.Format("2006-01-02")
-		case string:
-			labels[i] = d
-		default:
-			labels[i] = fmt.Sprintf("%v", stat.Date)
-		}
+		labels[i] = formatChartDate(stat.Date)
 		costs[i] = util.ToFloat64(stat.TotalCost)
 	}
 
@@ -790,43 +706,11 @@ func (s *Server) handleSessionReview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Build session detail
-	detail := templates.SessionDetail{
-		ID:             session.ID,
-		ProjectID:      session.ProjectID,
-		Cwd:            session.Cwd,
-		PermissionMode: session.PermissionMode,
-		ExitReason:     session.ExitReason,
-		CreatedAt:      session.CreatedAt,
-	}
-
-	if session.ExperimentID.Valid {
-		detail.ExperimentID = session.ExperimentID.String
-	}
-	if session.StartedAt.Valid {
-		detail.StartedAt = session.StartedAt.String
-	}
-	if session.EndedAt.Valid {
-		detail.EndedAt = session.EndedAt.String
-	}
-	if session.DurationSeconds.Valid {
-		detail.DurationSeconds = session.DurationSeconds.Int64
-	}
-
-	// Get metrics
+	var metrics *sqlc.SessionMetric
 	if m, err := queries.GetSessionMetricsBySessionID(ctx, id); err == nil {
-		detail.MessageCountUser = m.MessageCountUser
-		detail.MessageCountAssistant = m.MessageCountAssistant
-		detail.TurnCount = m.TurnCount
-		detail.TokenInput = m.TokenInput
-		detail.TokenOutput = m.TokenOutput
-		detail.TokenCacheRead = m.TokenCacheRead
-		detail.TokenCacheWrite = m.TokenCacheWrite
-		detail.ErrorCount = m.ErrorCount
-		if m.CostEstimateUsd.Valid {
-			detail.CostEstimateUsd = m.CostEstimateUsd.Float64
-		}
+		metrics = &m
 	}
+	detail := buildSessionDetail(session, metrics)
 
 	// Get existing quality review
 	var quality templates.SessionQuality

@@ -55,12 +55,9 @@ func runSessionsList(cmd *cobra.Command, args []string) error {
 	}
 
 	if sessionsExperiment != "" {
-		exp, err := app.ExperimentRepo.GetByName(ctx, sessionsExperiment)
+		exp, err := getExperimentByName(ctx, app.ExperimentRepo, sessionsExperiment)
 		if err != nil {
-			return fmt.Errorf("failed to get experiment: %w", err)
-		}
-		if exp == nil {
-			return fmt.Errorf("experiment %q not found", sessionsExperiment)
+			return err
 		}
 		opts.ExperimentID = &exp.ID
 	} else if sessionsProject != "" {

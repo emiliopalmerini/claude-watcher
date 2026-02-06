@@ -234,12 +234,9 @@ func runExperimentActivate(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 	name := args[0]
 
-	exp, err := app.ExperimentRepo.GetByName(ctx, name)
+	exp, err := getExperimentByName(ctx, app.ExperimentRepo, name)
 	if err != nil {
-		return fmt.Errorf("failed to get experiment: %w", err)
-	}
-	if exp == nil {
-		return fmt.Errorf("experiment %q not found", name)
+		return err
 	}
 
 	if exp.IsActive {
@@ -281,12 +278,9 @@ func runExperimentDeactivate(cmd *cobra.Command, args []string) error {
 	}
 
 	name := args[0]
-	exp, err := app.ExperimentRepo.GetByName(ctx, name)
+	exp, err := getExperimentByName(ctx, app.ExperimentRepo, name)
 	if err != nil {
-		return fmt.Errorf("failed to get experiment: %w", err)
-	}
-	if exp == nil {
-		return fmt.Errorf("experiment %q not found", name)
+		return err
 	}
 
 	if !exp.IsActive {
@@ -306,12 +300,9 @@ func runExperimentEnd(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 	name := args[0]
 
-	exp, err := app.ExperimentRepo.GetByName(ctx, name)
+	exp, err := getExperimentByName(ctx, app.ExperimentRepo, name)
 	if err != nil {
-		return fmt.Errorf("failed to get experiment: %w", err)
-	}
-	if exp == nil {
-		return fmt.Errorf("experiment %q not found", name)
+		return err
 	}
 
 	if exp.EndedAt != nil {
@@ -334,12 +325,9 @@ func runExperimentDelete(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 	name := args[0]
 
-	exp, err := app.ExperimentRepo.GetByName(ctx, name)
+	exp, err := getExperimentByName(ctx, app.ExperimentRepo, name)
 	if err != nil {
-		return fmt.Errorf("failed to get experiment: %w", err)
-	}
-	if exp == nil {
-		return fmt.Errorf("experiment %q not found", name)
+		return err
 	}
 
 	if err := app.ExperimentRepo.Delete(ctx, exp.ID); err != nil {
@@ -361,12 +349,9 @@ func runExperimentStats(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 	name := args[0]
 
-	exp, err := app.ExperimentRepo.GetByName(ctx, name)
+	exp, err := getExperimentByName(ctx, app.ExperimentRepo, name)
 	if err != nil {
-		return fmt.Errorf("failed to get experiment: %w", err)
-	}
-	if exp == nil {
-		return fmt.Errorf("experiment %q not found", name)
+		return err
 	}
 
 	stats, err := app.StatsRepo.GetAggregateByExperiment(ctx, exp.ID, "1970-01-01T00:00:00Z")

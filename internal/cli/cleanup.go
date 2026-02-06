@@ -86,12 +86,9 @@ func runCleanup(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to get sessions: %w", err)
 		}
 	} else if cleanupExperiment != "" {
-		exp, err := app.ExperimentRepo.GetByName(ctx, cleanupExperiment)
+		exp, err := getExperimentByName(ctx, app.ExperimentRepo, cleanupExperiment)
 		if err != nil {
-			return fmt.Errorf("failed to get experiment: %w", err)
-		}
-		if exp == nil {
-			return fmt.Errorf("experiment %q not found", cleanupExperiment)
+			return err
 		}
 
 		sessionsToDelete, err = app.SessionRepo.GetTranscriptPathsByExperiment(ctx, exp.ID)

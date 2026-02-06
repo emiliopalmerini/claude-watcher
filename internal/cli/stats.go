@@ -49,12 +49,9 @@ func runStats(cmd *cobra.Command, args []string) error {
 	var filterLabel string
 
 	if statsExperiment != "" {
-		exp, err := app.ExperimentRepo.GetByName(ctx, statsExperiment)
+		exp, err := getExperimentByName(ctx, app.ExperimentRepo, statsExperiment)
 		if err != nil {
-			return fmt.Errorf("failed to get experiment: %w", err)
-		}
-		if exp == nil {
-			return fmt.Errorf("experiment %q not found", statsExperiment)
+			return err
 		}
 
 		stats, err = app.StatsRepo.GetAggregateByExperiment(ctx, exp.ID, startDate)
