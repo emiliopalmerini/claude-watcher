@@ -7,6 +7,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var app *AppContext
+
+// skipAppContext lists commands that manage raw DB schema and don't need repositories.
+var skipAppContext = map[string]bool{
+	"migrate": true,
+	"reset":   true,
+	"help":    true,
+	"mclaude": true,
+	"record":  true, // record manages its own DB: spawns background processes and has test overrides
+}
+
 var rootCmd = &cobra.Command{
 	Use:   "mclaude",
 	Short: "Analytics and experimentation platform for Claude Code",
@@ -14,6 +25,20 @@ var rootCmd = &cobra.Command{
 
 Track sessions, measure token consumption, estimate costs, and run experiments
 to optimize your Claude Code workflow.`,
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		if skipAppContext[cmd.Name()] {
+			return nil
+		}
+		var err error
+		app, err = NewAppContext()
+		return err
+	},
+	PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
+		if app != nil {
+			return app.Close()
+		}
+		return nil
+	},
 }
 
 func Execute() {

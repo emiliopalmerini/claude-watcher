@@ -8,8 +8,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/emiliopalmerini/mclaude/internal/adapters/prometheus"
-	"github.com/emiliopalmerini/mclaude/internal/adapters/turso"
 	"github.com/emiliopalmerini/mclaude/internal/domain"
 	"github.com/emiliopalmerini/mclaude/internal/ports"
 	"github.com/emiliopalmerini/mclaude/internal/util"
@@ -97,13 +95,7 @@ func runLimitsPlan(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid plan type: %s (valid: pro, max_5x, max_20x)", planType)
 	}
 
-	db, err := turso.NewDB()
-	if err != nil {
-		return fmt.Errorf("failed to connect to database: %w", err)
-	}
-	defer db.Close()
-
-	planRepo := turso.NewPlanConfigRepository(db.DB)
+	planRepo := app.PlanConfigRepo
 
 	config := &domain.PlanConfig{
 		PlanType:    planType,
@@ -125,14 +117,7 @@ func runLimitsPlan(cmd *cobra.Command, args []string) error {
 
 func runLimitsLearn(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
-
-	db, err := turso.NewDB()
-	if err != nil {
-		return fmt.Errorf("failed to connect to database: %w", err)
-	}
-	defer db.Close()
-
-	planRepo := turso.NewPlanConfigRepository(db.DB)
+	planRepo := app.PlanConfigRepo
 
 	config, err := planRepo.Get(ctx)
 	if err != nil {
@@ -182,14 +167,7 @@ func runLimitsLearn(cmd *cobra.Command, args []string) error {
 
 func runLimitsList(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
-
-	db, err := turso.NewDB()
-	if err != nil {
-		return fmt.Errorf("failed to connect to database: %w", err)
-	}
-	defer db.Close()
-
-	planRepo := turso.NewPlanConfigRepository(db.DB)
+	planRepo := app.PlanConfigRepo
 
 	config, err := planRepo.Get(ctx)
 	if err != nil {
@@ -215,7 +193,7 @@ func runLimitsList(cmd *cobra.Command, args []string) error {
 	}
 
 	// Initialize Prometheus client for real-time data
-	promClient := getPrometheusClient()
+	promClient := app.PrometheusClient
 
 	// Try Prometheus first for real-time data if source allows
 	var promUsage *ports.UsageWindow
@@ -337,26 +315,9 @@ func runLimitsList(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// getPrometheusClient returns a Prometheus client (real or noop).
-func getPrometheusClient() ports.PrometheusClient {
-	cfg := prometheus.LoadConfig()
-	client, err := prometheus.NewClient(cfg)
-	if err != nil {
-		return prometheus.NewNoOpClient()
-	}
-	return client
-}
-
 func runLimitsCheck(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
-
-	db, err := turso.NewDB()
-	if err != nil {
-		return fmt.Errorf("failed to connect to database: %w", err)
-	}
-	defer db.Close()
-
-	planRepo := turso.NewPlanConfigRepository(db.DB)
+	planRepo := app.PlanConfigRepo
 
 	config, err := planRepo.Get(ctx)
 	if err != nil {

@@ -7,10 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/emiliopalmerini/mclaude/internal/adapters/storage"
-	"github.com/emiliopalmerini/mclaude/internal/adapters/turso"
 	"github.com/emiliopalmerini/mclaude/internal/util"
-	sqlc "github.com/emiliopalmerini/mclaude/sqlc/generated"
 )
 
 var cleanupCmd = &cobra.Command{
@@ -52,20 +49,8 @@ func runCleanup(cmd *cobra.Command, args []string) error {
 	}
 
 	ctx := context.Background()
-
-	db, err := turso.NewDB()
-	if err != nil {
-		return fmt.Errorf("failed to connect to database: %w", err)
-	}
-	defer db.Close()
-
-	queries := sqlc.New(db.DB)
-
-	// Initialize transcript storage for cleanup
-	transcriptStorage, err := storage.NewTranscriptStorage()
-	if err != nil {
-		return fmt.Errorf("failed to initialize transcript storage: %w", err)
-	}
+	queries := app.Queries
+	transcriptStorage := app.TranscriptStorage
 
 	var sessionsToDelete []sessionInfo
 

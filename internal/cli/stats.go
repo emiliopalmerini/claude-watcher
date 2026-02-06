@@ -7,7 +7,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/emiliopalmerini/mclaude/internal/adapters/turso"
 	"github.com/emiliopalmerini/mclaude/internal/util"
 	sqlc "github.com/emiliopalmerini/mclaude/sqlc/generated"
 )
@@ -58,13 +57,7 @@ type Stats struct {
 func runStats(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 
-	db, err := turso.NewDB()
-	if err != nil {
-		return fmt.Errorf("failed to connect to database: %w", err)
-	}
-	defer db.Close()
-
-	queries := sqlc.New(db.DB)
+	queries := app.Queries
 
 	// Calculate start date based on period
 	startDate := getStartDate(statsPeriod)

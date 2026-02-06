@@ -10,7 +10,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 
-	"github.com/emiliopalmerini/mclaude/internal/adapters/turso"
 	"github.com/emiliopalmerini/mclaude/internal/util"
 	sqlc "github.com/emiliopalmerini/mclaude/sqlc/generated"
 )
@@ -137,14 +136,7 @@ func init() {
 func runExperimentCreate(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 	name := args[0]
-
-	db, err := turso.NewDB()
-	if err != nil {
-		return fmt.Errorf("failed to connect to database: %w", err)
-	}
-	defer db.Close()
-
-	queries := sqlc.New(db.DB)
+	queries := app.Queries
 
 	// Check if experiment with this name already exists
 	existing, err := queries.GetExperimentByName(ctx, name)
@@ -179,14 +171,7 @@ func runExperimentCreate(cmd *cobra.Command, args []string) error {
 
 func runExperimentList(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
-
-	db, err := turso.NewDB()
-	if err != nil {
-		return fmt.Errorf("failed to connect to database: %w", err)
-	}
-	defer db.Close()
-
-	queries := sqlc.New(db.DB)
+	queries := app.Queries
 
 	// Get experiments with stats
 	expStats, err := queries.GetStatsForAllExperiments(ctx)
@@ -250,14 +235,7 @@ func runExperimentList(cmd *cobra.Command, args []string) error {
 func runExperimentActivate(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 	name := args[0]
-
-	db, err := turso.NewDB()
-	if err != nil {
-		return fmt.Errorf("failed to connect to database: %w", err)
-	}
-	defer db.Close()
-
-	queries := sqlc.New(db.DB)
+	queries := app.Queries
 
 	// Find experiment by name
 	exp, err := queries.GetExperimentByName(ctx, name)
@@ -286,14 +264,7 @@ func runExperimentActivate(cmd *cobra.Command, args []string) error {
 
 func runExperimentDeactivate(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
-
-	db, err := turso.NewDB()
-	if err != nil {
-		return fmt.Errorf("failed to connect to database: %w", err)
-	}
-	defer db.Close()
-
-	queries := sqlc.New(db.DB)
+	queries := app.Queries
 
 	if len(args) == 0 {
 		// Deactivate the currently active experiment
@@ -334,14 +305,7 @@ func runExperimentDeactivate(cmd *cobra.Command, args []string) error {
 func runExperimentEnd(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 	name := args[0]
-
-	db, err := turso.NewDB()
-	if err != nil {
-		return fmt.Errorf("failed to connect to database: %w", err)
-	}
-	defer db.Close()
-
-	queries := sqlc.New(db.DB)
+	queries := app.Queries
 
 	// Find experiment by name
 	exp, err := queries.GetExperimentByName(ctx, name)
@@ -374,14 +338,7 @@ func runExperimentEnd(cmd *cobra.Command, args []string) error {
 func runExperimentDelete(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 	name := args[0]
-
-	db, err := turso.NewDB()
-	if err != nil {
-		return fmt.Errorf("failed to connect to database: %w", err)
-	}
-	defer db.Close()
-
-	queries := sqlc.New(db.DB)
+	queries := app.Queries
 
 	// Find experiment by name
 	exp, err := queries.GetExperimentByName(ctx, name)
@@ -409,13 +366,7 @@ func runExperimentStats(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 	name := args[0]
 
-	db, err := turso.NewDB()
-	if err != nil {
-		return fmt.Errorf("failed to connect to database: %w", err)
-	}
-	defer db.Close()
-
-	queries := sqlc.New(db.DB)
+	queries := app.Queries
 
 	// Get experiment by name
 	exp, err := queries.GetExperimentByName(ctx, name)
@@ -498,13 +449,7 @@ func runExperimentStats(cmd *cobra.Command, args []string) error {
 func runExperimentCompare(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 
-	db, err := turso.NewDB()
-	if err != nil {
-		return fmt.Errorf("failed to connect to database: %w", err)
-	}
-	defer db.Close()
-
-	queries := sqlc.New(db.DB)
+	queries := app.Queries
 
 	// Collect stats for each experiment
 	var experiments []expData

@@ -9,7 +9,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/emiliopalmerini/mclaude/internal/adapters/turso"
 	"github.com/emiliopalmerini/mclaude/internal/util"
 	sqlc "github.com/emiliopalmerini/mclaude/sqlc/generated"
 )
@@ -52,14 +51,9 @@ func init() {
 func runSessionsList(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 
-	db, err := turso.NewDB()
-	if err != nil {
-		return fmt.Errorf("failed to connect to database: %w", err)
-	}
-	defer db.Close()
+	queries := app.Queries
 
-	queries := sqlc.New(db.DB)
-
+	var err error
 	var sessions []sqlc.Session
 
 	if sessionsExperiment != "" {

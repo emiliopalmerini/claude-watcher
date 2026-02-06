@@ -9,10 +9,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/emiliopalmerini/mclaude/internal/adapters/prometheus"
-	"github.com/emiliopalmerini/mclaude/internal/adapters/storage"
-	"github.com/emiliopalmerini/mclaude/internal/adapters/turso"
-	"github.com/emiliopalmerini/mclaude/internal/ports"
 	"github.com/emiliopalmerini/mclaude/internal/web"
 )
 
@@ -35,28 +31,6 @@ func init() {
 }
 
 func runServe(cmd *cobra.Command, args []string) error {
-	db, err := turso.NewDB()
-	if err != nil {
-		return fmt.Errorf("failed to connect to database: %w", err)
-	}
-	defer db.Close()
-
-	transcriptStorage, err := storage.NewTranscriptStorage()
-	if err != nil {
-		return fmt.Errorf("failed to initialize transcript storage: %w", err)
-	}
-
-	qualityRepo := turso.NewSessionQualityRepository(db.DB)
-	planConfigRepo := turso.NewPlanConfigRepository(db.DB)
-
-	var promClient ports.PrometheusClient
-	promCfg := prometheus.LoadConfig()
-	if client, err := prometheus.NewClient(promCfg); err == nil {
-		promClient = client
-	} else {
-		promClient = prometheus.NewNoOpClient()
-	}
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -68,6 +42,6 @@ func runServe(cmd *cobra.Command, args []string) error {
 		cancel()
 	}()
 
-	server := web.NewServer(db.DB, servePort, transcriptStorage, qualityRepo, planConfigRepo, promClient)
+	server := web.NewServer(app.DB.DB, servePort, app.TranscriptStorage, app.QualityRepo, app.PlanConfigRepo, app.PrometheusClient)
 	return server.Start(ctx)
 }

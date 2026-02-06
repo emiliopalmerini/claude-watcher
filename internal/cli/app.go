@@ -1,0 +1,78 @@
+package cli
+
+import (
+	"fmt"
+
+	"github.com/emiliopalmerini/mclaude/internal/adapters/prometheus"
+	"github.com/emiliopalmerini/mclaude/internal/adapters/storage"
+	"github.com/emiliopalmerini/mclaude/internal/adapters/turso"
+	"github.com/emiliopalmerini/mclaude/internal/ports"
+	sqlc "github.com/emiliopalmerini/mclaude/sqlc/generated"
+)
+
+// AppContext holds all shared dependencies for CLI commands.
+type AppContext struct {
+	DB               *turso.DB
+	Queries          *sqlc.Queries // transitional: will be removed once all commands use repos
+	SessionRepo      ports.SessionRepository
+	MetricsRepo      ports.SessionMetricsRepository
+	ToolRepo         ports.SessionToolRepository
+	FileRepo         ports.SessionFileRepository
+	CommandRepo      ports.SessionCommandRepository
+	SubagentRepo     ports.SessionSubagentRepository
+	ExperimentRepo   ports.ExperimentRepository
+	ProjectRepo      ports.ProjectRepository
+	PricingRepo      ports.PricingRepository
+	QualityRepo      ports.SessionQualityRepository
+	PlanConfigRepo   ports.PlanConfigRepository
+	TranscriptStorage ports.TranscriptStorage
+	PrometheusClient ports.PrometheusClient
+}
+
+// NewAppContext creates an AppContext with all dependencies initialized.
+func NewAppContext() (*AppContext, error) {
+	db, err := turso.NewDB()
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to database: %w", err)
+	}
+
+	transcriptStorage, err := storage.NewTranscriptStorage()
+	if err != nil {
+		db.Close()
+		return nil, fmt.Errorf("failed to initialize transcript storage: %w", err)
+	}
+
+	var promClient ports.PrometheusClient
+	promCfg := prometheus.LoadConfig()
+	if client, err := prometheus.NewClient(promCfg); err == nil {
+		promClient = client
+	} else {
+		promClient = prometheus.NewNoOpClient()
+	}
+
+	return &AppContext{
+		DB:                db,
+		Queries:           sqlc.New(db.DB),
+		SessionRepo:       turso.NewSessionRepository(db.DB),
+		MetricsRepo:       turso.NewSessionMetricsRepository(db.DB),
+		ToolRepo:          turso.NewSessionToolRepository(db.DB),
+		FileRepo:          turso.NewSessionFileRepository(db.DB),
+		CommandRepo:       turso.NewSessionCommandRepository(db.DB),
+		SubagentRepo:      turso.NewSessionSubagentRepository(db.DB),
+		ExperimentRepo:    turso.NewExperimentRepository(db.DB),
+		ProjectRepo:       turso.NewProjectRepository(db.DB),
+		PricingRepo:       turso.NewPricingRepository(db.DB),
+		QualityRepo:       turso.NewSessionQualityRepository(db.DB),
+		PlanConfigRepo:    turso.NewPlanConfigRepository(db.DB),
+		TranscriptStorage: transcriptStorage,
+		PrometheusClient:  promClient,
+	}, nil
+}
+
+// Close releases all resources held by the AppContext.
+func (a *AppContext) Close() error {
+	if a.DB != nil {
+		return a.DB.Close()
+	}
+	return nil
+}

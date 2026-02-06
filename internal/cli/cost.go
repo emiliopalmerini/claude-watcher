@@ -9,7 +9,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/emiliopalmerini/mclaude/internal/adapters/turso"
 	"github.com/emiliopalmerini/mclaude/internal/util"
 	sqlc "github.com/emiliopalmerini/mclaude/sqlc/generated"
 )
@@ -87,14 +86,7 @@ func init() {
 
 func runCostList(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
-
-	db, err := turso.NewDB()
-	if err != nil {
-		return fmt.Errorf("failed to connect to database: %w", err)
-	}
-	defer db.Close()
-
-	queries := sqlc.New(db.DB)
+	queries := app.Queries
 
 	pricing, err := queries.ListModelPricing(ctx)
 	if err != nil {
@@ -145,14 +137,7 @@ func runCostList(cmd *cobra.Command, args []string) error {
 func runCostSet(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 	modelID := args[0]
-
-	db, err := turso.NewDB()
-	if err != nil {
-		return fmt.Errorf("failed to connect to database: %w", err)
-	}
-	defer db.Close()
-
-	queries := sqlc.New(db.DB)
+	queries := app.Queries
 
 	displayName := costName
 	if displayName == "" {
@@ -233,14 +218,7 @@ func runCostSet(cmd *cobra.Command, args []string) error {
 func runCostDefault(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 	modelID := args[0]
-
-	db, err := turso.NewDB()
-	if err != nil {
-		return fmt.Errorf("failed to connect to database: %w", err)
-	}
-	defer db.Close()
-
-	queries := sqlc.New(db.DB)
+	queries := app.Queries
 
 	// Check if exists
 	existing, err := queries.GetModelPricingByID(ctx, modelID)
@@ -259,14 +237,7 @@ func runCostDefault(cmd *cobra.Command, args []string) error {
 func runCostDelete(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 	modelID := args[0]
-
-	db, err := turso.NewDB()
-	if err != nil {
-		return fmt.Errorf("failed to connect to database: %w", err)
-	}
-	defer db.Close()
-
-	queries := sqlc.New(db.DB)
+	queries := app.Queries
 
 	if err := queries.DeleteModelPricing(ctx, modelID); err != nil {
 		return fmt.Errorf("failed to delete pricing: %w", err)
