@@ -111,6 +111,23 @@ type SessionQuality struct {
 	CreatedAt         string         `json:"created_at"`
 }
 
+type SessionSubagent struct {
+	ID              int64           `json:"id"`
+	SessionID       string          `json:"session_id"`
+	AgentType       string          `json:"agent_type"`
+	AgentKind       string          `json:"agent_kind"`
+	Description     sql.NullString  `json:"description"`
+	Model           sql.NullString  `json:"model"`
+	TotalTokens     int64           `json:"total_tokens"`
+	TokenInput      int64           `json:"token_input"`
+	TokenOutput     int64           `json:"token_output"`
+	TokenCacheRead  int64           `json:"token_cache_read"`
+	TokenCacheWrite int64           `json:"token_cache_write"`
+	TotalDurationMs sql.NullInt64   `json:"total_duration_ms"`
+	ToolUseCount    int64           `json:"tool_use_count"`
+	CostEstimateUsd sql.NullFloat64 `json:"cost_estimate_usd"`
+}
+
 type SessionTool struct {
 	ID              int64         `json:"id"`
 	SessionID       string        `json:"session_id"`

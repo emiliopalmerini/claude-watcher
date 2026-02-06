@@ -124,6 +124,39 @@ LEFT JOIN session_metrics m ON s.id = m.session_id
 GROUP BY e.id, e.name
 ORDER BY e.created_at DESC;
 
+-- name: CreateSessionSubagent :exec
+INSERT INTO session_subagents (session_id, agent_type, agent_kind, description, model, total_tokens, token_input, token_output, token_cache_read, token_cache_write, total_duration_ms, tool_use_count, cost_estimate_usd)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+-- name: ListSessionSubagentsBySessionID :many
+SELECT * FROM session_subagents WHERE session_id = ? ORDER BY id ASC;
+
+-- name: GetSubagentStatsBySession :many
+SELECT
+    agent_type,
+    agent_kind,
+    COUNT(*) as invocation_count,
+    COALESCE(SUM(total_tokens), 0) as total_tokens,
+    COALESCE(SUM(cost_estimate_usd), 0) as total_cost
+FROM session_subagents
+WHERE session_id = ?
+GROUP BY agent_type, agent_kind
+ORDER BY total_tokens DESC;
+
+-- name: GetTopSubagentUsage :many
+SELECT
+    agent_type,
+    agent_kind,
+    COUNT(*) as invocation_count,
+    COALESCE(SUM(total_tokens), 0) as total_tokens,
+    COALESCE(SUM(cost_estimate_usd), 0) as total_cost
+FROM session_subagents sa
+JOIN sessions s ON sa.session_id = s.id
+WHERE s.created_at >= ?
+GROUP BY agent_type, agent_kind
+ORDER BY total_tokens DESC
+LIMIT ?;
+
 -- name: GetTopToolsUsageByExperiment :many
 SELECT
     tool_name,

@@ -92,6 +92,46 @@ func (q *Queries) CreateSessionMetrics(ctx context.Context, arg CreateSessionMet
 	return err
 }
 
+const createSessionSubagent = `-- name: CreateSessionSubagent :exec
+INSERT INTO session_subagents (session_id, agent_type, agent_kind, description, model, total_tokens, token_input, token_output, token_cache_read, token_cache_write, total_duration_ms, tool_use_count, cost_estimate_usd)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`
+
+type CreateSessionSubagentParams struct {
+	SessionID       string          `json:"session_id"`
+	AgentType       string          `json:"agent_type"`
+	AgentKind       string          `json:"agent_kind"`
+	Description     sql.NullString  `json:"description"`
+	Model           sql.NullString  `json:"model"`
+	TotalTokens     int64           `json:"total_tokens"`
+	TokenInput      int64           `json:"token_input"`
+	TokenOutput     int64           `json:"token_output"`
+	TokenCacheRead  int64           `json:"token_cache_read"`
+	TokenCacheWrite int64           `json:"token_cache_write"`
+	TotalDurationMs sql.NullInt64   `json:"total_duration_ms"`
+	ToolUseCount    int64           `json:"tool_use_count"`
+	CostEstimateUsd sql.NullFloat64 `json:"cost_estimate_usd"`
+}
+
+func (q *Queries) CreateSessionSubagent(ctx context.Context, arg CreateSessionSubagentParams) error {
+	_, err := q.db.ExecContext(ctx, createSessionSubagent,
+		arg.SessionID,
+		arg.AgentType,
+		arg.AgentKind,
+		arg.Description,
+		arg.Model,
+		arg.TotalTokens,
+		arg.TokenInput,
+		arg.TokenOutput,
+		arg.TokenCacheRead,
+		arg.TokenCacheWrite,
+		arg.TotalDurationMs,
+		arg.ToolUseCount,
+		arg.CostEstimateUsd,
+	)
+	return err
+}
+
 const createSessionTool = `-- name: CreateSessionTool :exec
 INSERT INTO session_tools (session_id, tool_name, invocation_count, total_duration_ms, error_count)
 VALUES (?, ?, ?, ?, ?)
@@ -422,6 +462,113 @@ func (q *Queries) GetStatsForAllExperiments(ctx context.Context) ([]GetStatsForA
 	return items, nil
 }
 
+const getSubagentStatsBySession = `-- name: GetSubagentStatsBySession :many
+SELECT
+    agent_type,
+    agent_kind,
+    COUNT(*) as invocation_count,
+    COALESCE(SUM(total_tokens), 0) as total_tokens,
+    COALESCE(SUM(cost_estimate_usd), 0) as total_cost
+FROM session_subagents
+WHERE session_id = ?
+GROUP BY agent_type, agent_kind
+ORDER BY total_tokens DESC
+`
+
+type GetSubagentStatsBySessionRow struct {
+	AgentType       string      `json:"agent_type"`
+	AgentKind       string      `json:"agent_kind"`
+	InvocationCount int64       `json:"invocation_count"`
+	TotalTokens     interface{} `json:"total_tokens"`
+	TotalCost       interface{} `json:"total_cost"`
+}
+
+func (q *Queries) GetSubagentStatsBySession(ctx context.Context, sessionID string) ([]GetSubagentStatsBySessionRow, error) {
+	rows, err := q.db.QueryContext(ctx, getSubagentStatsBySession, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetSubagentStatsBySessionRow{}
+	for rows.Next() {
+		var i GetSubagentStatsBySessionRow
+		if err := rows.Scan(
+			&i.AgentType,
+			&i.AgentKind,
+			&i.InvocationCount,
+			&i.TotalTokens,
+			&i.TotalCost,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getTopSubagentUsage = `-- name: GetTopSubagentUsage :many
+SELECT
+    agent_type,
+    agent_kind,
+    COUNT(*) as invocation_count,
+    COALESCE(SUM(total_tokens), 0) as total_tokens,
+    COALESCE(SUM(cost_estimate_usd), 0) as total_cost
+FROM session_subagents sa
+JOIN sessions s ON sa.session_id = s.id
+WHERE s.created_at >= ?
+GROUP BY agent_type, agent_kind
+ORDER BY total_tokens DESC
+LIMIT ?
+`
+
+type GetTopSubagentUsageParams struct {
+	CreatedAt string `json:"created_at"`
+	Limit     int64  `json:"limit"`
+}
+
+type GetTopSubagentUsageRow struct {
+	AgentType       string      `json:"agent_type"`
+	AgentKind       string      `json:"agent_kind"`
+	InvocationCount int64       `json:"invocation_count"`
+	TotalTokens     interface{} `json:"total_tokens"`
+	TotalCost       interface{} `json:"total_cost"`
+}
+
+func (q *Queries) GetTopSubagentUsage(ctx context.Context, arg GetTopSubagentUsageParams) ([]GetTopSubagentUsageRow, error) {
+	rows, err := q.db.QueryContext(ctx, getTopSubagentUsage, arg.CreatedAt, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetTopSubagentUsageRow{}
+	for rows.Next() {
+		var i GetTopSubagentUsageRow
+		if err := rows.Scan(
+			&i.AgentType,
+			&i.AgentKind,
+			&i.InvocationCount,
+			&i.TotalTokens,
+			&i.TotalCost,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getTopToolsUsage = `-- name: GetTopToolsUsage :many
 SELECT
     tool_name,
@@ -568,6 +715,48 @@ func (q *Queries) ListSessionFilesBySessionID(ctx context.Context, sessionID str
 			&i.FilePath,
 			&i.Operation,
 			&i.OperationCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSessionSubagentsBySessionID = `-- name: ListSessionSubagentsBySessionID :many
+SELECT id, session_id, agent_type, agent_kind, description, model, total_tokens, token_input, token_output, token_cache_read, token_cache_write, total_duration_ms, tool_use_count, cost_estimate_usd FROM session_subagents WHERE session_id = ? ORDER BY id ASC
+`
+
+func (q *Queries) ListSessionSubagentsBySessionID(ctx context.Context, sessionID string) ([]SessionSubagent, error) {
+	rows, err := q.db.QueryContext(ctx, listSessionSubagentsBySessionID, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SessionSubagent{}
+	for rows.Next() {
+		var i SessionSubagent
+		if err := rows.Scan(
+			&i.ID,
+			&i.SessionID,
+			&i.AgentType,
+			&i.AgentKind,
+			&i.Description,
+			&i.Model,
+			&i.TotalTokens,
+			&i.TokenInput,
+			&i.TokenOutput,
+			&i.TokenCacheRead,
+			&i.TokenCacheWrite,
+			&i.TotalDurationMs,
+			&i.ToolUseCount,
+			&i.CostEstimateUsd,
 		); err != nil {
 			return nil, err
 		}
