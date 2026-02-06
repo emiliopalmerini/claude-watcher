@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/spf13/cobra"
 
@@ -197,17 +196,6 @@ func runLimitsList(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to get plan config: %w", err)
 	}
 
-	if config != nil {
-		// Reset windows if expired before showing usage
-		now := time.Now()
-		if _, err := planRepo.ResetWindowIfExpired(ctx, now); err != nil {
-			return fmt.Errorf("failed to reset 5-hour window: %w", err)
-		}
-		if _, err := planRepo.ResetWeeklyWindowIfExpired(ctx, now); err != nil {
-			return fmt.Errorf("failed to reset weekly window: %w", err)
-		}
-	}
-
 	if config == nil {
 		fmt.Println("No plan configured")
 		fmt.Println("\nUse 'mclaude limits plan <type>' to set your plan:")
@@ -378,15 +366,6 @@ func runLimitsCheck(cmd *cobra.Command, args []string) error {
 	if config == nil {
 		fmt.Println("No plan configured")
 		return nil
-	}
-
-	// Reset windows if expired before checking usage
-	now := time.Now()
-	if _, err := planRepo.ResetWindowIfExpired(ctx, now); err != nil {
-		return fmt.Errorf("failed to reset 5-hour window: %w", err)
-	}
-	if _, err := planRepo.ResetWeeklyWindowIfExpired(ctx, now); err != nil {
-		return fmt.Errorf("failed to reset weekly window: %w", err)
 	}
 
 	// Check 5-hour window

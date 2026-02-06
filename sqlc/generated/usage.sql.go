@@ -35,14 +35,11 @@ func (q *Queries) GetPlanConfig(ctx context.Context) (PlanConfig, error) {
 
 const getRollingWindowUsage = `-- name: GetRollingWindowUsage :one
 SELECT
-    CAST(COALESCE(SUM(m.token_cache_read + m.token_cache_write), 0) AS REAL) as total_tokens,
+    CAST(COALESCE(SUM(m.token_input + m.token_output + m.token_cache_read + m.token_cache_write), 0) AS REAL) as total_tokens,
     CAST(COALESCE(SUM(m.cost_estimate_usd), 0) AS REAL) as total_cost
 FROM sessions s
 JOIN session_metrics m ON s.id = m.session_id
-WHERE datetime(s.started_at) >= datetime((
-    SELECT COALESCE(window_start_time, datetime('now', ? || ' hours'))
-    FROM plan_config WHERE id = 1
-))
+WHERE datetime(s.started_at) >= datetime('now', ? || ' hours')
 `
 
 type GetRollingWindowUsageRow struct {
@@ -59,14 +56,11 @@ func (q *Queries) GetRollingWindowUsage(ctx context.Context, dollar_1 sql.NullSt
 
 const getWeeklyWindowUsage = `-- name: GetWeeklyWindowUsage :one
 SELECT
-    CAST(COALESCE(SUM(m.token_cache_read + m.token_cache_write), 0) AS REAL) as total_tokens,
+    CAST(COALESCE(SUM(m.token_input + m.token_output + m.token_cache_read + m.token_cache_write), 0) AS REAL) as total_tokens,
     CAST(COALESCE(SUM(m.cost_estimate_usd), 0) AS REAL) as total_cost
 FROM sessions s
 JOIN session_metrics m ON s.id = m.session_id
-WHERE datetime(s.started_at) >= datetime((
-    SELECT COALESCE(weekly_window_start_time, datetime('now', '-168 hours'))
-    FROM plan_config WHERE id = 1
-))
+WHERE datetime(s.started_at) >= datetime('now', '-168 hours')
 `
 
 type GetWeeklyWindowUsageRow struct {
