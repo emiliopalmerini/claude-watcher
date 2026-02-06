@@ -117,6 +117,33 @@ templ SessionDetailPage(session SessionDetail) {
 				</div>
 			</div>
 
+			<!-- Sub-Agents -->
+			if len(session.Subagents) > 0 {
+				<div class="card">
+					<h2 class="text-lg font-semibold mb-4">Sub-Agents</h2>
+					<div class="space-y-2">
+						for _, sa := range session.Subagents {
+							<div class="flex justify-between items-center py-2 border-b last:border-0">
+								<div class="flex items-center gap-2">
+									<span class="font-mono text-sm">{ sa.AgentType }</span>
+									<span class={ "badge", agentKindBadge(sa.AgentKind) }>{ sa.AgentKind }</span>
+								</div>
+								<div class="flex items-center gap-4 text-sm text-gray-600">
+									<span>{ fmt.Sprintf("%d", sa.Count) }x</span>
+									<span>{ formatTokens(sa.Tokens) } tokens</span>
+									if sa.Cost > 0 {
+										<span class="text-green-600">{ fmt.Sprintf("$%.4f", sa.Cost) }</span>
+									}
+									if sa.DurationMs > 0 {
+										<span>{ fmt.Sprintf("%.1fs", float64(sa.DurationMs)/1000) }</span>
+									}
+								</div>
+							</div>
+						}
+					</div>
+				</div>
+			}
+
 			<!-- Files -->
 			if len(session.Files) > 0 {
 				<div class="card">
@@ -147,6 +174,17 @@ func exitReasonBadge(reason string) string {
 	case "exit":
 		return "badge-green"
 	case "clear":
+		return "badge-yellow"
+	default:
+		return "badge-gray"
+	}
+}
+
+func agentKindBadge(kind string) string {
+	switch kind {
+	case "task":
+		return "badge-blue"
+	case "skill":
 		return "badge-yellow"
 	default:
 		return "badge-gray"

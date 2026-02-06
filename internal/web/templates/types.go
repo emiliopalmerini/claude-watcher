@@ -75,6 +75,15 @@ type SessionSummary struct {
 	IsSuccess     *bool
 }
 
+type SubagentUsage struct {
+	AgentType  string
+	AgentKind  string // "task" or "skill"
+	Count      int64
+	Tokens     int64
+	Cost       float64
+	DurationMs int64
+}
+
 type SessionDetail struct {
 	ID                    string
 	ProjectID             string
@@ -97,6 +106,7 @@ type SessionDetail struct {
 	ErrorCount            int64
 	Tools                 []ToolUsage
 	Files                 []FileOperation
+	Subagents             []SubagentUsage
 	// Quality
 	Quality *SessionQuality
 }
