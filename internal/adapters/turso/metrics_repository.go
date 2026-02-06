@@ -252,3 +252,107 @@ func (r *SessionCommandRepository) ListBySessionID(ctx context.Context, sessionI
 	}
 	return commands, nil
 }
+
+type SessionSubagentRepository struct {
+	db      *sql.DB
+	queries *sqlc.Queries
+}
+
+func NewSessionSubagentRepository(db *sql.DB) *SessionSubagentRepository {
+	return &SessionSubagentRepository{
+		db:      db,
+		queries: sqlc.New(db),
+	}
+}
+
+func (r *SessionSubagentRepository) CreateBatch(ctx context.Context, subagents []*domain.SessionSubagent) error {
+	for _, sa := range subagents {
+		var description sql.NullString
+		if sa.Description != nil {
+			description = sql.NullString{String: *sa.Description, Valid: true}
+		}
+
+		var model sql.NullString
+		if sa.Model != nil {
+			model = sql.NullString{String: *sa.Model, Valid: true}
+		}
+
+		var totalDurationMs sql.NullInt64
+		if sa.TotalDurationMs != nil {
+			totalDurationMs = sql.NullInt64{Int64: *sa.TotalDurationMs, Valid: true}
+		}
+
+		var costEstimate sql.NullFloat64
+		if sa.CostEstimateUSD != nil {
+			costEstimate = sql.NullFloat64{Float64: *sa.CostEstimateUSD, Valid: true}
+		}
+
+		err := r.queries.CreateSessionSubagent(ctx, sqlc.CreateSessionSubagentParams{
+			SessionID:       sa.SessionID,
+			AgentType:       sa.AgentType,
+			AgentKind:       sa.AgentKind,
+			Description:     description,
+			Model:           model,
+			TotalTokens:     sa.TotalTokens,
+			TokenInput:      sa.TokenInput,
+			TokenOutput:     sa.TokenOutput,
+			TokenCacheRead:  sa.TokenCacheRead,
+			TokenCacheWrite: sa.TokenCacheWrite,
+			TotalDurationMs: totalDurationMs,
+			ToolUseCount:    sa.ToolUseCount,
+			CostEstimateUsd: costEstimate,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to create session subagent %s: %w", sa.AgentType, err)
+		}
+	}
+	return nil
+}
+
+func (r *SessionSubagentRepository) ListBySessionID(ctx context.Context, sessionID string) ([]*domain.SessionSubagent, error) {
+	rows, err := r.queries.ListSessionSubagentsBySessionID(ctx, sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list session subagents: %w", err)
+	}
+
+	subagents := make([]*domain.SessionSubagent, len(rows))
+	for i, row := range rows {
+		var description *string
+		if row.Description.Valid {
+			description = &row.Description.String
+		}
+
+		var model *string
+		if row.Model.Valid {
+			model = &row.Model.String
+		}
+
+		var totalDurationMs *int64
+		if row.TotalDurationMs.Valid {
+			totalDurationMs = &row.TotalDurationMs.Int64
+		}
+
+		var costEstimate *float64
+		if row.CostEstimateUsd.Valid {
+			costEstimate = &row.CostEstimateUsd.Float64
+		}
+
+		subagents[i] = &domain.SessionSubagent{
+			ID:              row.ID,
+			SessionID:       row.SessionID,
+			AgentType:       row.AgentType,
+			AgentKind:       row.AgentKind,
+			Description:     description,
+			Model:           model,
+			TotalTokens:     row.TotalTokens,
+			TokenInput:      row.TokenInput,
+			TokenOutput:     row.TokenOutput,
+			TokenCacheRead:  row.TokenCacheRead,
+			TokenCacheWrite: row.TokenCacheWrite,
+			TotalDurationMs: totalDurationMs,
+			ToolUseCount:    row.ToolUseCount,
+			CostEstimateUSD: costEstimate,
+		}
+	}
+	return subagents, nil
+}
