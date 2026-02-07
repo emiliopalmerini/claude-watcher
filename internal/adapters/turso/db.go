@@ -129,6 +129,29 @@ func NewDBWithConfig(cfg DBConfig) (*DB, error) {
 	}, nil
 }
 
+// NewRemoteDB creates a direct remote connection to Turso (no embedded replica).
+// Use this for server deployments where no local state is needed.
+func NewRemoteDB(url, authToken string) (*sql.DB, error) {
+	if url == "" {
+		return nil, fmt.Errorf("database URL is required")
+	}
+	if authToken == "" {
+		return nil, fmt.Errorf("auth token is required")
+	}
+
+	db, err := sql.Open("libsql", url+"?authToken="+authToken)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open remote database: %w", err)
+	}
+
+	if err := db.Ping(); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("failed to ping remote database: %w", err)
+	}
+
+	return db, nil
+}
+
 // Sync triggers an immediate sync with the remote database.
 // Returns nil if sync is not enabled.
 func (d *DB) Sync() error {
