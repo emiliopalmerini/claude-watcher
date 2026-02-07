@@ -22,7 +22,6 @@ func TestAppContextFieldTypes(t *testing.T) {
 	var _ ports.PlanConfigRepository = a.PlanConfigRepo
 	var _ ports.StatsRepository = a.StatsRepo
 	var _ ports.TranscriptStorage = a.TranscriptStorage
-	var _ ports.PrometheusClient = a.PrometheusClient
 }
 
 func TestAppContextClose_NilDB(t *testing.T) {

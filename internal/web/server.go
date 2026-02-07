@@ -22,7 +22,6 @@ type Server struct {
 	transcriptStorage ports.TranscriptStorage
 	qualityRepo       ports.SessionQualityRepository
 	planConfigRepo    ports.PlanConfigRepository
-	promClient        ports.PrometheusClient
 	experimentRepo    ports.ExperimentRepository
 	pricingRepo       ports.PricingRepository
 	sessionRepo       ports.SessionRepository
@@ -37,7 +36,6 @@ func NewServer(
 	ts ports.TranscriptStorage,
 	qr ports.SessionQualityRepository,
 	pcr ports.PlanConfigRepository,
-	prom ports.PrometheusClient,
 	er ports.ExperimentRepository,
 	pr ports.PricingRepository,
 	sr ports.SessionRepository,
@@ -52,7 +50,6 @@ func NewServer(
 		transcriptStorage: ts,
 		qualityRepo:       qr,
 		planConfigRepo:    pcr,
-		promClient:        prom,
 		experimentRepo:    er,
 		pricingRepo:       pr,
 		sessionRepo:       sr,

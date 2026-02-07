@@ -11,5 +11,4 @@ func TestServerFieldsAreInterfaces(t *testing.T) {
 	var _ ports.TranscriptStorage = s.transcriptStorage
 	var _ ports.SessionQualityRepository = s.qualityRepo
 	var _ ports.PlanConfigRepository = s.planConfigRepo
-	var _ ports.PrometheusClient = s.promClient
 }

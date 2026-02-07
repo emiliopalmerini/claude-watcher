@@ -27,15 +27,6 @@ mclaude is a personal analytics and experimentation platform for Claude Code usa
 # Database
 MCLAUDE_DATABASE_URL  # libsql connection URL
 MCLAUDE_AUTH_TOKEN    # Turso auth token
-
-# OpenTelemetry (optional)
-MCLAUDE_OTEL_ENABLED      # Enable OTEL export (true/false)
-MCLAUDE_OTEL_ENDPOINT     # OTEL Collector endpoint (e.g., localhost:4317)
-MCLAUDE_OTEL_INSECURE     # Use insecure connection (true/false)
-
-# Prometheus (optional)
-MCLAUDE_PROMETHEUS_ENABLED  # Enable Prometheus queries (true/false)
-MCLAUDE_PROMETHEUS_URL      # Prometheus URL (e.g., http://localhost:9090)
 ```
 
 ## Build Commands
@@ -71,9 +62,7 @@ internal/
 │   ├── project_repository.go
 │   ├── pricing_repository.go
 │   ├── usage_repository.go
-│   ├── transcript_storage.go
-│   ├── metrics_exporter.go     # OTEL metrics export interface
-│   └── prometheus_client.go    # Prometheus query interface
+│   └── transcript_storage.go
 │
 ├── adapters/                   # Interface implementations
 │   ├── turso/                  # Database adapters
@@ -83,16 +72,8 @@ internal/
 │   │   ├── project_repository.go
 │   │   ├── pricing_repository.go
 │   │   └── usage_repository.go
-│   ├── storage/
-│   │   └── transcript_storage.go   # XDG + gzip storage
-│   ├── otel/                   # OpenTelemetry adapters
-│   │   ├── exporter.go         # OTEL SDK metrics exporter
-│   │   ├── noop.go             # NoOp for graceful degradation
-│   │   └── config.go           # Environment config
-│   └── prometheus/             # Prometheus adapters
-│       ├── client.go           # HTTP query client
-│       ├── noop.go             # NoOp for graceful degradation
-│       └── config.go           # Environment config
+│   └── storage/
+│       └── transcript_storage.go   # XDG + gzip storage
 │
 ├── parser/                     # Transcript parsing (pure logic)
 │   └── transcript.go           # JSONL parser, metric extraction
@@ -210,13 +191,6 @@ The `record` command receives JSON from stdin (Claude Code hook), then:
 - **Cleanup cascade**: Deleting sessions also removes transcript files from storage
 - **Usage windows**: Dual-window tracking (5-hour and 7-day) with fixed start times that auto-reset when expired
 - **Plan presets**: Three tiers (pro, max_5x, max_20x) with estimated limits; users can learn actual limits
-
-### Observability Integration
-
-- **OTEL Export**: After each session is saved to the database, enriched metrics are exported to OTEL Collector (if configured)
-- **Prometheus Queries**: `limits` command and web dashboard can query Prometheus for real-time usage data
-- **Graceful Degradation**: If OTEL/Prometheus unavailable, system continues with local data only
-- **Data Sources**: Dashboard and CLI show data source indicator (prometheus vs local)
 
 ## Testing Strategy
 

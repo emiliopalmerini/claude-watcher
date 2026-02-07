@@ -3,7 +3,6 @@ package cli
 import (
 	"fmt"
 
-	"github.com/emiliopalmerini/mclaude/internal/adapters/prometheus"
 	"github.com/emiliopalmerini/mclaude/internal/adapters/storage"
 	"github.com/emiliopalmerini/mclaude/internal/adapters/turso"
 	"github.com/emiliopalmerini/mclaude/internal/ports"
@@ -25,7 +24,6 @@ type AppContext struct {
 	PlanConfigRepo    ports.PlanConfigRepository
 	StatsRepo         ports.StatsRepository
 	TranscriptStorage ports.TranscriptStorage
-	PrometheusClient  ports.PrometheusClient
 }
 
 // NewAppContext creates an AppContext with all dependencies initialized.
@@ -39,14 +37,6 @@ func NewAppContext() (*AppContext, error) {
 	if err != nil {
 		db.Close()
 		return nil, fmt.Errorf("failed to initialize transcript storage: %w", err)
-	}
-
-	var promClient ports.PrometheusClient
-	promCfg := prometheus.LoadConfig()
-	if client, err := prometheus.NewClient(promCfg); err == nil {
-		promClient = client
-	} else {
-		promClient = prometheus.NewNoOpClient()
 	}
 
 	return &AppContext{
@@ -64,7 +54,6 @@ func NewAppContext() (*AppContext, error) {
 		PlanConfigRepo:    turso.NewPlanConfigRepository(db.DB),
 		StatsRepo:         turso.NewStatsRepository(db.DB),
 		TranscriptStorage: transcriptStorage,
-		PrometheusClient:  promClient,
 	}, nil
 }
 

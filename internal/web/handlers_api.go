@@ -162,29 +162,12 @@ func (s *Server) handleAPIRealtimeUsage(w http.ResponseWriter, r *http.Request) 
 		usageStats.WeeklyTokenLimit = preset.TokenEstimate
 	}
 
-	// Try Prometheus first for real-time data
-	promAvailable := false
-	if s.promClient.IsAvailable(ctx) {
-		// 5-hour window
-		if usage, err := s.promClient.GetRollingWindowUsage(ctx, planConfig.WindowHours); err == nil && usage.Available {
-			usageStats.TokensUsed = usage.TotalTokens
-			promAvailable = true
-		}
-
-		// 7-day window (168 hours)
-		if usage, err := s.promClient.GetRollingWindowUsage(ctx, 168); err == nil && usage.Available {
-			usageStats.WeeklyTokensUsed = usage.TotalTokens
-		}
+	// Query local DB for usage data
+	if summary, err := s.planConfigRepo.GetRollingWindowSummary(ctx, planConfig.WindowHours); err == nil {
+		usageStats.TokensUsed = summary.TotalTokens
 	}
-
-	// Fall back to local DB if Prometheus not available
-	if !promAvailable {
-		if summary, err := s.planConfigRepo.GetRollingWindowSummary(ctx, planConfig.WindowHours); err == nil {
-			usageStats.TokensUsed = summary.TotalTokens
-		}
-		if summary, err := s.planConfigRepo.GetWeeklyWindowSummary(ctx); err == nil {
-			usageStats.WeeklyTokensUsed = summary.TotalTokens
-		}
+	if summary, err := s.planConfigRepo.GetWeeklyWindowSummary(ctx); err == nil {
+		usageStats.WeeklyTokensUsed = summary.TotalTokens
 	}
 
 	// Calculate percentages and status
@@ -210,7 +193,6 @@ func (s *Server) handleAPIRealtimeUsage(w http.ResponseWriter, r *http.Request) 
 	// JSON API request - convert to RealtimeUsageStats
 	realtimeStats := templates.RealtimeUsageStats{
 		Available:       true,
-		Source:          "local",
 		FiveHourTokens:  usageStats.TokensUsed,
 		WeeklyTokens:    usageStats.WeeklyTokensUsed,
 		FiveHourPercent: usageStats.UsagePercent,
@@ -219,9 +201,6 @@ func (s *Server) handleAPIRealtimeUsage(w http.ResponseWriter, r *http.Request) 
 		WeeklyStatus:    usageStats.WeeklyStatus,
 		FiveHourLimit:   usageStats.TokenLimit,
 		WeeklyLimit:     usageStats.WeeklyTokenLimit,
-	}
-	if promAvailable {
-		realtimeStats.Source = "prometheus"
 	}
 
 	w.Header().Set("Content-Type", "application/json")
