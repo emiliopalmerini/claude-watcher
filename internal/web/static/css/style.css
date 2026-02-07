@@ -1135,11 +1135,13 @@ details[open] summary::before {
   font-size: 0.8125rem;
 }
 .btn-ghost {
-  background: transparent;
-  border-color: transparent;
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+  color: var(--text-secondary);
 }
 .btn-ghost:hover {
-  background: var(--bg-tertiary);
+  background: var(--border-color);
+  color: var(--text-primary);
 }
 
 /* Flexbox utilities */
