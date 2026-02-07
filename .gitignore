@@ -8,10 +8,7 @@
 *.so
 *.dylib
 /mclaude
-/mclaude-otel
-/session-tracker
-/test-prompter
-/dashboard
+/wmclaude
 
 # Test binary, built with `go test -c`
 *.test
