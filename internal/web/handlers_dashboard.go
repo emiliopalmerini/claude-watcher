@@ -4,6 +4,8 @@ import (
 	"context"
 	"net/http"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/emiliopalmerini/mclaude/internal/domain"
 	"github.com/emiliopalmerini/mclaude/internal/util"
 	"github.com/emiliopalmerini/mclaude/internal/web/templates"
@@ -31,16 +33,133 @@ func (s *Server) fetchDashboardData(ctx context.Context, filters dashboardFilter
 	queries := sqlc.New(s.db)
 	startDate := util.GetStartDateForPeriod(filters.Period)
 
-	// Get aggregate stats based on filters
-	var aggStats *domain.AggregateStats
-	if filters.Experiment != "" {
-		aggStats, _ = s.statsRepo.GetAggregateByExperiment(ctx, filters.Experiment, startDate)
-	} else if filters.Project != "" {
-		aggStats, _ = s.statsRepo.GetAggregateByProject(ctx, filters.Project, startDate)
-	} else {
-		aggStats, _ = s.statsRepo.GetAggregate(ctx, startDate)
-	}
+	// Results collected by each goroutine (no mutex needed — each writes to its own var)
+	var (
+		aggStats       *domain.AggregateStats
+		experiments    []*domain.Experiment
+		projects       []*domain.Project
+		usageStats     *templates.UsageLimitStats
+		activeExp      sqlc.Experiment
+		defaultModel   sqlc.ModelPricing
+		tools          []sqlc.GetTopToolsUsageRow
+		sessions       []sqlc.ListSessionsWithMetricsRow
+		qualityStats   sqlc.GetOverallQualityStatsRow
+		qualityStatsOK bool
+	)
 
+	g, gctx := errgroup.WithContext(ctx)
+
+	// 1. Aggregate stats
+	g.Go(func() error {
+		var err error
+		if filters.Experiment != "" {
+			aggStats, err = s.statsRepo.GetAggregateByExperiment(gctx, filters.Experiment, startDate)
+		} else if filters.Project != "" {
+			aggStats, err = s.statsRepo.GetAggregateByProject(gctx, filters.Project, startDate)
+		} else {
+			aggStats, err = s.statsRepo.GetAggregate(gctx, startDate)
+		}
+		_ = err
+		return nil
+	})
+
+	// 2. Experiments list (for dropdown)
+	g.Go(func() error {
+		experiments, _ = s.experimentRepo.List(gctx)
+		return nil
+	})
+
+	// 3. Projects list (for dropdown)
+	g.Go(func() error {
+		projects, _ = s.projectRepo.List(gctx)
+		return nil
+	})
+
+	// 4. Plan config → rolling window → weekly window (internal chain)
+	g.Go(func() error {
+		planConfig, err := s.planConfigRepo.Get(gctx)
+		if err != nil || planConfig == nil {
+			return nil
+		}
+
+		us := &templates.UsageLimitStats{
+			PlanType:    planConfig.PlanType,
+			WindowHours: planConfig.WindowHours,
+		}
+
+		if planConfig.LearnedTokenLimit != nil {
+			us.TokenLimit = *planConfig.LearnedTokenLimit
+			us.IsLearned = true
+		} else if preset, ok := domain.PlanPresets[planConfig.PlanType]; ok {
+			us.TokenLimit = preset.TokenEstimate
+		}
+
+		if summary, err := s.planConfigRepo.GetRollingWindowSummary(gctx, planConfig.WindowHours); err == nil {
+			us.TokensUsed = summary.TotalTokens
+			if us.TokenLimit > 0 {
+				us.UsagePercent = (summary.TotalTokens / us.TokenLimit) * 100
+			}
+			us.Status = domain.GetStatusFromPercent(us.UsagePercent)
+			us.MinutesLeft = planConfig.WindowHours * 60
+		}
+
+		if planConfig.WeeklyLearnedTokenLimit != nil {
+			us.WeeklyTokenLimit = *planConfig.WeeklyLearnedTokenLimit
+			us.WeeklyIsLearned = true
+		} else if preset, ok := domain.WeeklyPlanPresets[planConfig.PlanType]; ok {
+			us.WeeklyTokenLimit = preset.TokenEstimate
+		}
+
+		if weeklySummary, err := s.planConfigRepo.GetWeeklyWindowSummary(gctx); err == nil {
+			us.WeeklyTokensUsed = weeklySummary.TotalTokens
+			if us.WeeklyTokenLimit > 0 {
+				us.WeeklyUsagePercent = (weeklySummary.TotalTokens / us.WeeklyTokenLimit) * 100
+			}
+			us.WeeklyStatus = domain.GetStatusFromPercent(us.WeeklyUsagePercent)
+		}
+
+		usageStats = us
+		return nil
+	})
+
+	// 5. Active experiment
+	g.Go(func() error {
+		activeExp, _ = queries.GetActiveExperiment(gctx)
+		return nil
+	})
+
+	// 6. Default model
+	g.Go(func() error {
+		defaultModel, _ = queries.GetDefaultModelPricing(gctx)
+		return nil
+	})
+
+	// 7. Top tools
+	g.Go(func() error {
+		tools, _ = queries.GetTopToolsUsage(gctx, sqlc.GetTopToolsUsageParams{
+			CreatedAt: startDate,
+			Limit:     5,
+		})
+		return nil
+	})
+
+	// 8. Recent sessions
+	g.Go(func() error {
+		sessions, _ = queries.ListSessionsWithMetrics(gctx, 5)
+		return nil
+	})
+
+	// 9. Quality stats
+	g.Go(func() error {
+		var err error
+		qualityStats, err = queries.GetOverallQualityStats(gctx)
+		qualityStatsOK = err == nil
+		return nil
+	})
+
+	g.Wait()
+
+	// Assemble results
 	stats := templates.DashboardStats{
 		FilterPeriod:     filters.Period,
 		FilterExperiment: filters.Experiment,
@@ -59,76 +178,21 @@ func (s *Server) fetchDashboardData(ctx context.Context, filters dashboardFilter
 		stats.TotalErrors = aggStats.TotalErrors
 	}
 
-	// Populate filter dropdowns
-	if experiments, err := s.experimentRepo.List(ctx); err == nil {
-		for _, e := range experiments {
-			stats.Experiments = append(stats.Experiments, templates.FilterOption{ID: e.ID, Name: e.Name})
-		}
+	for _, e := range experiments {
+		stats.Experiments = append(stats.Experiments, templates.FilterOption{ID: e.ID, Name: e.Name})
 	}
-	if projects, err := s.projectRepo.List(ctx); err == nil {
-		for _, p := range projects {
-			stats.Projects = append(stats.Projects, templates.FilterOption{ID: p.ID, Name: p.Name})
-		}
+	for _, p := range projects {
+		stats.Projects = append(stats.Projects, templates.FilterOption{ID: p.ID, Name: p.Name})
 	}
 
-	// Get usage limit stats
-	if planConfig, err := s.planConfigRepo.Get(ctx); err == nil && planConfig != nil {
-		usageStats := &templates.UsageLimitStats{
-			PlanType:    planConfig.PlanType,
-			WindowHours: planConfig.WindowHours,
-		}
+	stats.UsageStats = usageStats
 
-		if planConfig.LearnedTokenLimit != nil {
-			usageStats.TokenLimit = *planConfig.LearnedTokenLimit
-			usageStats.IsLearned = true
-		} else if preset, ok := domain.PlanPresets[planConfig.PlanType]; ok {
-			usageStats.TokenLimit = preset.TokenEstimate
-		}
-
-		if summary, err := s.planConfigRepo.GetRollingWindowSummary(ctx, planConfig.WindowHours); err == nil {
-			usageStats.TokensUsed = summary.TotalTokens
-			if usageStats.TokenLimit > 0 {
-				usageStats.UsagePercent = (summary.TotalTokens / usageStats.TokenLimit) * 100
-			}
-			usageStats.Status = domain.GetStatusFromPercent(usageStats.UsagePercent)
-			usageStats.MinutesLeft = planConfig.WindowHours * 60
-		}
-
-		if planConfig.WeeklyLearnedTokenLimit != nil {
-			usageStats.WeeklyTokenLimit = *planConfig.WeeklyLearnedTokenLimit
-			usageStats.WeeklyIsLearned = true
-		} else if preset, ok := domain.WeeklyPlanPresets[planConfig.PlanType]; ok {
-			usageStats.WeeklyTokenLimit = preset.TokenEstimate
-		}
-
-		if weeklySummary, err := s.planConfigRepo.GetWeeklyWindowSummary(ctx); err == nil {
-			usageStats.WeeklyTokensUsed = weeklySummary.TotalTokens
-			if usageStats.WeeklyTokenLimit > 0 {
-				usageStats.WeeklyUsagePercent = (weeklySummary.TotalTokens / usageStats.WeeklyTokenLimit) * 100
-			}
-			usageStats.WeeklyStatus = domain.GetStatusFromPercent(usageStats.WeeklyUsagePercent)
-		}
-
-		stats.UsageStats = usageStats
-	}
-
-	// Get active experiment
-	activeExp, _ := queries.GetActiveExperiment(ctx)
 	if activeExp.Name != "" {
 		stats.ActiveExperiment = activeExp.Name
 	}
-
-	// Get default model
-	defaultModel, _ := queries.GetDefaultModelPricing(ctx)
 	if defaultModel.DisplayName != "" {
 		stats.DefaultModel = defaultModel.DisplayName
 	}
-
-	// Get top tools
-	tools, _ := queries.GetTopToolsUsage(ctx, sqlc.GetTopToolsUsageParams{
-		CreatedAt: startDate,
-		Limit:     5,
-	})
 
 	topTools := make([]templates.ToolUsage, 0, len(tools))
 	for _, t := range tools {
@@ -141,8 +205,6 @@ func (s *Server) fetchDashboardData(ctx context.Context, filters dashboardFilter
 	}
 	stats.TopTools = topTools
 
-	// Get recent sessions (with metrics in single query)
-	sessions, _ := queries.ListSessionsWithMetrics(ctx, 5)
 	recentSessions := make([]templates.SessionSummary, 0, len(sessions))
 	for _, sess := range sessions {
 		summary := templates.SessionSummary{
@@ -159,9 +221,7 @@ func (s *Server) fetchDashboardData(ctx context.Context, filters dashboardFilter
 	}
 	stats.RecentSessions = recentSessions
 
-	// Get overall quality stats
-	qualityStats, err := queries.GetOverallQualityStats(ctx)
-	if err == nil && qualityStats.ReviewedCount > 0 {
+	if qualityStatsOK && qualityStats.ReviewedCount > 0 {
 		stats.ReviewedCount = qualityStats.ReviewedCount
 		if qualityStats.AvgOverallRating.Valid {
 			avg := qualityStats.AvgOverallRating.Float64
